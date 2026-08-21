@@ -80,8 +80,8 @@ def alerts_from_imports(imports: list[Import]) -> list[Alert]:
                     title="Données à valider",
                     message=(
                         f"{imp.rows_quarantined} ligne(s) sur {imp.rows_processed} de "
-                        f"l'import « {imp.file_name} » sont en quarantaine et exclues "
-                        f"des KPI tant qu'elles ne sont pas validées."
+                        f"l'import « {imp.file_name} » sont en attente de vérification et "
+                        f"exclues des KPI tant qu'elles ne sont pas validées."
                     ),
                     source="import",
                     source_id=str(imp.id),

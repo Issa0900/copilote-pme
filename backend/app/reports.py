@@ -63,7 +63,7 @@ def _build_resume(
     evenements = [
         (
             f"Import « {imp.file_name} » : {imp.rows_processed} ligne(s), "
-            f"{imp.rows_quarantined} en quarantaine"
+            f"{imp.rows_quarantined} en attente de vérification"
             if imp.status != "echoue"
             else f"Import « {imp.file_name} » échoué : {imp.error_message or 'raison inconnue'}"
         )
@@ -122,16 +122,16 @@ def _generate_report_content(
         "risques": top_risks,
         "opportunites": {
             "items": [],
-            "note": "Module de détection d'opportunités (Module 17) non implémenté.",
+            "note": "Aucune opportunité identifiée pour l'instant.",
         },
         "actualites": {
             "items": [],
-            "note": "Radar externe (Module 8) non implémenté.",
+            "note": "Aucune actualité pertinente pour l'instant.",
         },
         "actions": top_actions,
         "automatisations": {
             "items": [],
-            "note": "Module d'automatisation (Module 21) non implémenté.",
+            "note": "Aucune automatisation configurée pour l'instant.",
         },
         "anomalies_count": len(anomalies),
     }
