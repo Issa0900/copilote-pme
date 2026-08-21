@@ -20,20 +20,26 @@ Avant de concevoir un écran :
 
 Ce qui suit constitue l'identité visuelle du produit. Elle a été choisie une fois pour garder une cohérence entre des écrans générés à des moments différents ; ne pas repartir d'une palette ou d'une typographie neutre à chaque nouvelle demande, sauf si Issa demande explicitement de la revoir.
 
+**Révision du 2026-08-21** : direction assouplie à la demande explicite d'Issa (langage utilisateur simple, palette plus douce et harmonisée, interface plus vivante et soignée), en remplacement de la direction initiale strictement sobre. Le sérieux d'un outil de pilotage pour dirigeant reste non négociable — ce n'est pas devenu une application grand public — mais le ton visuel est désormais chaleureux et arrondi plutôt que froid et clinique. Deux explorations ont été proposées (« sobre-chaleureuse » et « ronde-vivante ») ; Issa a retenu la seconde. C'est elle qui est documentée ci-dessous.
+
 ### Ton
 
-Un outil de pilotage sérieux pour un dirigeant qui manque de temps, pas une application grand public. La sobriété est une exigence produit autant qu'un choix esthétique — le PRD est explicite sur ce point : l'écran d'accueil ne montre pas 50 graphiques (section 47). Le langage visuel s'inspire d'un instrument de bord : précis, lisible d'un coup d'œil, jamais décoratif.
+Un outil de pilotage fiable pour un dirigeant qui manque de temps — mais un outil qu'on a envie d'ouvrir, pas un tableau de bord froid. La rigueur des données et la clarté de lecture restent non négociables (le PRD reste explicite : l'écran d'accueil ne montre pas 50 graphiques, section 47), mais l'exécution visuelle peut être chaleureuse, arrondie et vivante — mouvement discipliné à l'ouverture de l'écran, formes accueillantes, une seule couleur d'accent utilisée avec plus d'affirmation plutôt qu'une palette froide et plate.
 
 ### Palette
 
-Marque (4 tons) :
+Marque (5 tons) :
 
 | Rôle | Nom | Hex |
 |---|---|---|
-| Texte, structure forte | encre | `#121820` |
-| Fond de page | papier | `#F1F3F1` |
+| Texte, structure forte | encre | `#26332C` |
+| Fond de page | papier | `#F3F7F1` |
 | Surface (cartes, panneaux) | surface | `#FFFFFF` |
-| Accent, interactif, CTA | signal | `#1B6E62` |
+| Accent, interactif, CTA | signal | `#1B8564` |
+| Accent appuyé (hover, dégradés, valeurs positives fortes) | signal-fort | `#0F6B4F` |
+| Rail de navigation (fond, toujours sombre, indépendant du thème) | nav | `#17352A` |
+
+Le fond de page reprend délibérément une teinte proche de l'accent (vert très désaturé) plutôt qu'un gris neutre — c'est ce qui rend la palette « harmonisée » plutôt qu'un accent isolé sur un fond froid. Texte secondaire : `#6A7A70` (bordures : `#DCE9DA`).
 
 Statut sémantique (5 tons, jamais utilisés pour la marque ou un bouton d'action — réservés à l'état d'une donnée) :
 
@@ -56,13 +62,16 @@ Charger ces polices via Google Fonts dans les artifacts HTML. En React, les déc
 
 ### Composants signature
 
-- **Jauges horizontales** avec graduations, jamais de jauge circulaire ni de donut chart — clin d'œil direct au vocabulaire de « pilotage ». Utilisées pour tout score : santé globale, dimension, risque, opportunité, confiance.
+- **Jauges horizontales** avec graduations, jamais de jauge circulaire ni de donut chart — clin d'œil direct au vocabulaire de « pilotage ». Utilisées pour tout score : santé globale, dimension, risque, opportunité, confiance. Remplissage en dégradé `signal-fort → signal` plutôt qu'un aplat, animé à l'ouverture de l'écran (transform-origin gauche, ~1s, désactivé si `prefers-reduced-motion`).
 - **Rail de statut** : bordure gauche de 4px dans la couleur sémantique, sur toute carte porteuse d'un état (alerte, tâche, recommandation).
-- **Badge de fiabilité** : chaque affirmation générée par le système (section 44 du PRD, « principes de confiance ») porte une étiquette discrète — FAIT / ANALYSE / HYPOTHÈSE / RECOMMANDATION / PRÉVISION — petites majuscules grises, jamais colorées, jamais omises. C'est une règle produit, pas une option de style : le PRD insiste sur le fait de ne jamais présenter une hypothèse comme une certitude.
+- **Badge de fiabilité** : chaque affirmation générée par le système (section 44 du PRD, « principes de confiance ») porte une étiquette discrète — FAIT / ANALYSE / HYPOTHÈSE / RECOMMANDATION / PRÉVISION — petites majuscules grises, jamais colorées, jamais omises. C'est une règle produit, pas une option de style : le PRD insiste sur le fait de ne jamais présenter une hypothèse comme une certitude. Ce badge reste gris neutre même dans la direction assouplie — ne jamais le colorer, même dans un souci d'harmonie visuelle.
+- **Chips de statut** (compteurs par sévérité, etc.) : fond dérivé de la couleur du texte elle-même (`color-mix(in srgb, currentColor 15%, transparent)`), jamais un blanc/noir fixe — condition pour rester lisible aussi bien en thème clair qu'en thème sombre.
+- **Formes rondes** : coins à 20–24px sur les cartes et panneaux (contre 6px dans la direction initiale), boutons et chips en pilule complète (`border-radius: 999px`). Le rail de navigation a son coin extérieur arrondi (28px) plutôt qu'un angle droit.
+- **Survol vivant** : les cartes s'élèvent et grossissent légèrement au survol (`translateY(-3px) scale(1.02)`), pas seulement une ombre plate. Mouvement orchestré à l'ouverture de l'écran (légère montée + fondu en cascade), jamais de micro-animations dispersées sans lien entre elles.
 
 ### Layout
 
-Rail de navigation étroit à gauche sur fond encre, contenu sur fond papier, cartes en surface avec coins à 6px. Un écran d'accueil expose une idée dominante et trois priorités au maximum (section 47) ; les écrans de détail (KPI, rapports) peuvent être plus denses mais restent hiérarchisés — une information dominante par bloc, jamais une mosaïque de graphiques sans ordre de lecture.
+Rail de navigation à gauche sur fond `nav` (`#17352A`, toujours sombre, indépendant du thème clair/sombre du contenu — c'est un élément d'identité fixe, pas une zone qui suit le thème), coin extérieur arrondi. Contenu sur fond papier, cartes en surface avec coins à 20–24px. Un écran d'accueil expose une idée dominante et trois priorités au maximum (section 47) ; les écrans de détail (KPI, rapports) peuvent être plus denses mais restent hiérarchisés — une information dominante par bloc, jamais une mosaïque de graphiques sans ordre de lecture.
 
 ### Contrainte technique de cet environnement
 

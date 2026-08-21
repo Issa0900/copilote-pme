@@ -1,4 +1,4 @@
-import { Card, EmptyState } from "@/components/ui";
+import { Card, EmptyState, SectionHeading } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { ALERT_LEVEL_LABELS, ALERT_LEVEL_ORDER, ALERT_LEVEL_TONE } from "@/lib/alert-levels";
 import type { Alert } from "@/lib/types";
@@ -24,11 +24,15 @@ export default async function CompanyAlertsPage({
         <EmptyState>Aucune alerte pour l&apos;instant.</EmptyState>
       ) : (
         <div className="space-y-6">
-          {grouped.map(({ level, items }) => (
-            <div key={level}>
-              <h2 className="mb-2 text-sm font-medium text-foreground-muted">
+          {grouped.map(({ level, items }, groupIndex) => (
+            <div
+              key={level}
+              className="animate-enter"
+              style={{ "--enter-delay": `${groupIndex * 0.05}s` } as React.CSSProperties}
+            >
+              <SectionHeading>
                 {ALERT_LEVEL_LABELS[level]} ({items.length})
-              </h2>
+              </SectionHeading>
               <ul className="space-y-2">
                 {items.map((alert, i) => (
                   <Card key={i} tone={ALERT_LEVEL_TONE[level]}>
@@ -44,10 +48,11 @@ export default async function CompanyAlertsPage({
 
       <p className="mt-8 text-xs text-foreground-muted">
         Alertes calculées à la demande à partir des anomalies détectées et des
-        imports (données à valider, imports échoués). Pas encore d&apos;état
-        persistant (lu/résolu) ni de notifications (courriel, mobile) — Module 32
-        non implémenté. Aucune alerte « opportunité » n&apos;est encore générée :
-        le module de détection d&apos;opportunités n&apos;est pas construit.
+        imports (données à valider, imports échoués). Il n&apos;est pas encore
+        possible de marquer une alerte comme lue ou résolue, et les
+        notifications par courriel ou mobile ne sont pas encore disponibles.
+        Aucune alerte « opportunité » n&apos;est encore générée pour le
+        moment.
       </p>
     </div>
   );

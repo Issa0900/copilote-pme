@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
-import Link from "next/link";
 import "./globals.css";
+
+import { SiteHeader } from "@/components/site-header";
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-ibm-plex-sans",
@@ -27,13 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
-        <header className="sticky top-0 z-10 border-b border-border bg-surface/90 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-3xl items-center px-6 py-3 sm:px-8">
-            <Link href="/" className="text-sm font-semibold tracking-tight">
-              Copilote PME
-            </Link>
-          </div>
-        </header>
+        <SiteHeader />
         <div className="flex flex-1 flex-col">{children}</div>
       </body>
     </html>

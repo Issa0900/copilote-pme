@@ -30,6 +30,9 @@ const TONE_TEXT: Record<Tone, string> = {
   info: "text-info",
 };
 
+// Chip de statut (compteurs par sévérité, étiquettes de priorité, etc.) : le
+// fond est dérivé de la couleur du texte elle-même plutôt qu'un ton fixe
+// précalculé, pour rester lisible quel que soit le thème (skill/SKILL.md).
 export function Badge({
   tone = "neutral",
   children,
@@ -37,9 +40,13 @@ export function Badge({
   tone?: Tone;
   children: ReactNode;
 }) {
+  const isNeutral = tone === "neutral";
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${TONE_STYLES[tone]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE_TEXT[tone]} ${
+        isNeutral ? "border border-border bg-surface-muted" : ""
+      }`}
+      style={isNeutral ? undefined : { background: "color-mix(in srgb, currentColor 15%, transparent)" }}
     >
       {children}
     </span>
@@ -49,17 +56,27 @@ export function Badge({
 export function Card({
   children,
   className = "",
+  style,
   tone,
+  interactive = false,
 }: {
   children: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   tone?: Tone;
+  /** Survol vivant (élévation + léger agrandissement) — pour les cartes cliquables. */
+  interactive?: boolean;
 }) {
   const toneClass = tone
     ? TONE_STYLES[tone]
     : "bg-surface border-border text-foreground";
   return (
-    <div className={`rounded-xl border p-4 shadow-sm ${toneClass} ${className}`}>
+    <div
+      style={style}
+      className={`rounded-[20px] border p-4 shadow-sm transition-transform duration-200 ease-out ${
+        interactive ? "hover:-translate-y-[3px] hover:scale-[1.02] hover:shadow-md" : ""
+      } ${toneClass} ${className}`}
+    >
       {children}
     </div>
   );
@@ -83,10 +100,10 @@ export function Button({
   onClick?: () => void;
 }) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    "inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
   const variants: Record<string, string> = {
-    primary: "bg-accent text-accent-foreground hover:opacity-90",
-    secondary: "border border-border bg-surface text-foreground hover:bg-surface-muted",
+    primary: "bg-accent text-accent-foreground hover:bg-accent-strong",
+    secondary: "border border-border bg-surface text-foreground hover:border-accent",
     ghost: "text-foreground-muted hover:text-foreground hover:bg-surface-muted",
   };
   const sizes: Record<string, string> = {
@@ -120,10 +137,10 @@ export function LinkButton({
   className?: string;
 }) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    "inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
   const variants: Record<string, string> = {
-    primary: "bg-accent text-accent-foreground hover:opacity-90",
-    secondary: "border border-border bg-surface text-foreground hover:bg-surface-muted",
+    primary: "bg-accent text-accent-foreground hover:bg-accent-strong",
+    secondary: "border border-border bg-surface text-foreground hover:border-accent",
     ghost: "text-foreground-muted hover:text-foreground hover:bg-surface-muted",
   };
   const sizes: Record<string, string> = {
@@ -149,7 +166,7 @@ export function StatTile({
 }) {
   const valueClass = tone ? TONE_TEXT[tone] : "text-foreground";
   return (
-    <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+    <div className="rounded-[20px] border border-border bg-surface p-4 shadow-sm transition-transform duration-200 ease-out hover:-translate-y-[3px] hover:scale-[1.02] hover:shadow-md">
       <p className="text-xs text-foreground-muted">{label}</p>
       <p className={`mt-1 font-mono text-xl font-semibold ${valueClass}`}>{value}</p>
     </div>
@@ -166,7 +183,7 @@ export function SectionHeading({ children }: { children: ReactNode }) {
 
 export function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-foreground-muted">
+    <div className="rounded-[20px] border border-dashed border-border p-6 text-center text-sm text-foreground-muted">
       {children}
     </div>
   );

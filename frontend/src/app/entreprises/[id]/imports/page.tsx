@@ -7,7 +7,7 @@ const STATUS_LABELS: Record<string, string> = {
   complete: "Complété",
   echoue: "Échoué",
   en_cours: "En cours",
-  en_quarantaine: "En quarantaine",
+  en_quarantaine: "En attente de vérification",
 };
 
 const STATUS_TONE: Record<string, "success" | "danger" | "neutral" | "surveillance"> = {
@@ -29,7 +29,7 @@ export default async function CompanyImportsPage({
 
   return (
     <div className="space-y-8">
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0s" } as React.CSSProperties}>
         <SectionHeading>Importer un fichier</SectionHeading>
         <Card>
           <UploadForm companyId={id} />
@@ -39,7 +39,7 @@ export default async function CompanyImportsPage({
         </Card>
       </div>
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.05s" } as React.CSSProperties}>
         <SectionHeading>Historique des imports</SectionHeading>
         {imports.length === 0 ? (
           <EmptyState>Aucun import pour l&apos;instant.</EmptyState>
@@ -56,7 +56,7 @@ export default async function CompanyImportsPage({
                 <p className="mt-1 text-sm text-foreground-muted">
                   <span className="font-mono">{imp.rows_processed}</span> ligne(s) ·{" "}
                   <span className="font-mono">{imp.rows_quarantined}</span> en
-                  quarantaine
+                  attente de vérification
                   {imp.quality_score !== null && (
                     <>
                       {" "}

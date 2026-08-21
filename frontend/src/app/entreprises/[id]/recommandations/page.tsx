@@ -31,7 +31,10 @@ export default async function CompanyRecommendationsPage({
       {recommendations.length === 0 ? (
         <EmptyState>Aucune recommandation pour l&apos;instant.</EmptyState>
       ) : (
-        <ul className="space-y-3">
+        <ul
+          className="animate-enter space-y-3"
+          style={{ "--enter-delay": "0s" } as React.CSSProperties}
+        >
           {recommendations.map((rec) => (
             <Card
               key={rec.id}
@@ -74,8 +77,9 @@ export default async function CompanyRecommendationsPage({
 
       <p className="mt-8 text-xs text-foreground-muted">
         Générées automatiquement à partir des anomalies significatives (sévérité
-        élevée ou moyenne). Accepter/rejeter met à jour le statut, mais ne crée
-        pas encore de tâche assignée (Module 20, non implémenté).
+        élevée ou moyenne). Accepter ou rejeter met à jour le statut de la
+        recommandation, mais ne crée pas encore de tâche assignée à un membre
+        de l&apos;équipe.
       </p>
     </div>
   );

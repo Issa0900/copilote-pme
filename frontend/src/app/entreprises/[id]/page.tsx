@@ -77,9 +77,12 @@ export default async function CompanyDashboardPage({
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 gap-3">
+      <div
+        className="animate-enter grid grid-cols-2 gap-3"
+        style={{ "--enter-delay": "0s" } as React.CSSProperties}
+      >
         <Link href={`/entreprises/${id}/alertes`}>
-          <Card tone={urgentAlerts > 0 ? "danger" : "neutral"} className="h-full">
+          <Card interactive tone={urgentAlerts > 0 ? "danger" : "neutral"} className="h-full">
             <p className="text-xs opacity-80">Alertes à traiter</p>
             <p className="mt-1 font-mono text-xl font-semibold">{urgentAlerts}</p>
             {nonZeroAlerts.length > 0 && (
@@ -94,14 +97,14 @@ export default async function CompanyDashboardPage({
           </Card>
         </Link>
         <Link href={`/entreprises/${id}/recommandations`}>
-          <Card tone={pendingRecs > 0 ? "warning" : "neutral"} className="h-full">
+          <Card interactive tone={pendingRecs > 0 ? "warning" : "neutral"} className="h-full">
             <p className="text-xs opacity-80">Recommandations en attente</p>
             <p className="mt-1 font-mono text-xl font-semibold">{pendingRecs}</p>
           </Card>
         </Link>
       </div>
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.05s" } as React.CSSProperties}>
         <SectionHeading>
           FAIT — calculé directement à partir des données validées
           {kpis.period_start && kpis.period_end && (
@@ -134,7 +137,7 @@ export default async function CompanyDashboardPage({
             }
           />
           <StatTile
-            label="En quarantaine"
+            label="En attente de vérification"
             value={String(kpis.quarantined_count)}
             tone={kpis.quarantined_count > 0 ? "warning" : undefined}
           />
@@ -142,7 +145,7 @@ export default async function CompanyDashboardPage({
       </div>
 
       {timeseries.length > 1 && (
-        <div>
+        <div className="animate-enter" style={{ "--enter-delay": "0.1s" } as React.CSSProperties}>
           <SectionHeading>Résultat net par jour</SectionHeading>
           <Card>
             <NetTrendChart data={timeseries} />
@@ -151,7 +154,7 @@ export default async function CompanyDashboardPage({
       )}
 
       {categories.length > 0 && (
-        <div>
+        <div className="animate-enter" style={{ "--enter-delay": "0.15s" } as React.CSSProperties}>
           <SectionHeading>Répartition par catégorie</SectionHeading>
           <Card>
             <CategoryBreakdown items={categories} />
@@ -159,7 +162,7 @@ export default async function CompanyDashboardPage({
         </div>
       )}
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.2s" } as React.CSSProperties}>
         <SectionHeading>
           ANALYSE — écarts statistiques détectés par le système, à valider
         </SectionHeading>
@@ -172,7 +175,7 @@ export default async function CompanyDashboardPage({
           <ul className="space-y-2">
             {anomalies.map((anomaly, i) => (
               <Card key={i} tone={SEVERITY_TONE[anomaly.severity]}>
-                <span className="mr-2 inline-block rounded bg-surface/60 px-1.5 py-0.5 text-xs font-medium">
+                <span className="mr-2 inline-block rounded-full bg-surface/60 px-2 py-0.5 text-xs font-medium">
                   {SEVERITY_LABELS[anomaly.severity]}
                 </span>
                 <span className="text-sm">{anomaly.message}</span>

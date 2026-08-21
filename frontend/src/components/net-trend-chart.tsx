@@ -7,25 +7,55 @@ import { formatCurrency, formatDate } from "@/lib/format";
 type Point = { date: string; net: number };
 
 const CHART_HEIGHT = 160;
-const BASELINE_Y = CHART_HEIGHT / 2;
-const MAX_BAR_WIDTH = 24;
-const GAP = 2;
+const TOP_PAD = 22; // room for the peak label above the highest point
+const BOTTOM_PAD = 18; // room for the baseline/legend area
 
 export function NetTrendChart({ data }: { data: Point[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const gradientId = useId();
   const titleId = useId();
 
   if (data.length === 0) return null;
 
-  const maxAbs = Math.max(...data.map((d) => Math.abs(d.net)), 1);
-  const halfHeight = CHART_HEIGHT / 2 - 20; // leave room for extreme labels
-  const barWidth = Math.min(MAX_BAR_WIDTH, 100 / data.length - GAP);
   const step = 100 / data.length;
+  const plotTop = TOP_PAD;
+  const plotBottom = CHART_HEIGHT - BOTTOM_PAD;
 
-  const maxIndex = data.reduce(
-    (best, d, i) => (Math.abs(d.net) > Math.abs(data[best].net) ? i : best),
+  const values = data.map((d) => d.net);
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+  const range = dataMax - dataMin;
+
+  const yFor = (v: number) =>
+    range === 0
+      ? (plotTop + plotBottom) / 2
+      : plotBottom - ((v - dataMin) / range) * (plotBottom - plotTop);
+
+  // Zero-crossing baseline is only meaningful when the period actually has
+  // both profit and loss days; otherwise fall back to a plain floor line
+  // under the plotted area, purely as a visual reference.
+  const baselineY = dataMin <= 0 && dataMax >= 0 ? yFor(0) : plotBottom;
+
+  const points = data.map((d, i) => ({
+    x: i * step + step / 2,
+    y: yFor(d.net),
+    date: d.date,
+    net: d.net,
+  }));
+
+  const peakIndex = data.reduce(
+    (best, d, i) => (d.net > data[best].net ? i : best),
     0
   );
+  const peak = points[peakIndex];
+
+  const linePath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+    .join(" ");
+  const areaPath =
+    points.length > 0
+      ? `${linePath} L${points[points.length - 1].x},${CHART_HEIGHT} L${points[0].x},${CHART_HEIGHT} Z`
+      : "";
 
   return (
     <div>
@@ -38,77 +68,81 @@ export function NetTrendChart({ data }: { data: Point[] }) {
       >
         <title id={titleId}>Résultat net par jour</title>
 
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.25} />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+
         <line
           x1={0}
           x2={100}
-          y1={BASELINE_Y}
-          y2={BASELINE_Y}
+          y1={baselineY}
+          y2={baselineY}
           stroke="var(--border)"
           strokeWidth={1}
           vectorEffect="non-scaling-stroke"
         />
 
-        {data.map((d, i) => {
-          const h = (Math.abs(d.net) / maxAbs) * halfHeight;
-          const x = i * step + (step - barWidth) / 2;
-          const isPositive = d.net >= 0;
-          const y = isPositive ? BASELINE_Y - h : BASELINE_Y;
-          const color =
-            d.net === 0
-              ? "var(--border)"
-              : isPositive
-                ? "var(--info)"
-                : "var(--danger)";
-          const isExtreme = i === maxIndex;
-          const isHovered = hovered === i;
+        {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />}
 
-          return (
-            <g key={d.date}>
-              <rect
-                x={x}
-                y={y}
-                width={barWidth}
-                height={Math.max(h, 1)}
-                rx={1.5}
-                fill={color}
-                opacity={isHovered ? 1 : 0.9}
-              />
-              {isExtreme && (
-                <text
-                  x={x + barWidth / 2}
-                  y={isPositive ? y - 4 : y + h + 10}
-                  fontSize={6}
-                  textAnchor="middle"
-                  fill="var(--foreground-muted)"
-                  style={{ fontFamily: "var(--font-mono)" }}
-                >
-                  {formatCurrency(d.net)}
-                </text>
-              )}
-              {/* hit target: full column height, bigger than the visible bar */}
-              <rect
-                x={i * step}
-                y={0}
-                width={step}
-                height={CHART_HEIGHT}
-                fill="transparent"
-                tabIndex={0}
-                role="button"
-                aria-label={`${formatDate(d.date)} : ${formatCurrency(d.net)}`}
-                onMouseEnter={() => setHovered(i)}
-                onMouseLeave={() => setHovered(null)}
-                onFocus={() => setHovered(i)}
-                onBlur={() => setHovered(null)}
-              />
-            </g>
-          );
-        })}
+        {linePath && (
+          <path
+            d={linePath}
+            fill="none"
+            stroke="var(--accent-strong)"
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+
+        <circle
+          cx={peak.x}
+          cy={peak.y}
+          r={2.4}
+          fill="var(--accent-strong)"
+          stroke="var(--surface)"
+          strokeWidth={1}
+          vectorEffect="non-scaling-stroke"
+        />
+
+        {/* hit targets: one column per point, full chart height, bigger than
+            the visible line so every point stays consultable at the mouse
+            or via keyboard focus regardless of point density. */}
+        {points.map((p, i) => (
+          <rect
+            key={data[i].date}
+            x={i * step}
+            y={0}
+            width={step}
+            height={CHART_HEIGHT}
+            fill="transparent"
+            tabIndex={0}
+            role="button"
+            aria-label={`${formatDate(data[i].date)} : ${formatCurrency(data[i].net)}`}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+            onFocus={() => setHovered(i)}
+            onBlur={() => setHovered(null)}
+          />
+        ))}
       </svg>
+
+      <div className="mt-1.5 flex justify-between font-mono text-[11px] text-foreground-muted">
+        <span>{formatDate(data[0].date)}</span>
+        <span>
+          pic — {formatDate(data[peakIndex].date)} : {formatCurrency(data[peakIndex].net)}
+        </span>
+        <span>{formatDate(data[data.length - 1].date)}</span>
+      </div>
 
       <div className="relative h-6">
         {hovered !== null && (
           <div
-            className="pointer-events-none absolute -top-1 z-10 -translate-x-1/2 rounded-md border border-border bg-surface px-2 py-1 text-xs shadow-md"
+            className="pointer-events-none absolute -top-1 z-10 -translate-x-1/2 rounded-lg border border-border bg-surface px-2 py-1 text-xs shadow-md"
             style={{
               left: `${hovered * step + step / 2}%`,
             }}

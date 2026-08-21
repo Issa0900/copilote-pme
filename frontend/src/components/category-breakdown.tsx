@@ -9,7 +9,7 @@ export function CategoryBreakdown({ items }: { items: Item[] }) {
 
   return (
     <ul className="space-y-2.5">
-      {items.map((item) => (
+      {items.map((item, i) => (
         <li key={item.category}>
           <div className="mb-1 flex items-baseline justify-between text-sm">
             <span>{item.category}</span>
@@ -19,8 +19,12 @@ export function CategoryBreakdown({ items }: { items: Item[] }) {
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-surface-muted">
             <div
-              className="h-full rounded-full bg-accent"
-              style={{ width: `${Math.max((item.total / max) * 100, 3)}%` }}
+              className="animate-bar-grow h-full rounded-full"
+              style={{
+                width: `${Math.max((item.total / max) * 100, 3)}%`,
+                background: "linear-gradient(90deg, var(--accent-strong), var(--accent))",
+                "--enter-delay": `${i * 0.05}s`,
+              } as React.CSSProperties}
             />
           </div>
         </li>

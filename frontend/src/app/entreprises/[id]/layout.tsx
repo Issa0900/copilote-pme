@@ -1,7 +1,7 @@
 import { logoutAction } from "@/app/connexion/actions";
 import { Button } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
-import type { Company } from "@/lib/types";
+import type { AlertSummaryItem, Company, Recommendation } from "@/lib/types";
 import { CompanyNav } from "./company-nav";
 
 export default async function CompanyLayout({
@@ -12,33 +12,46 @@ export default async function CompanyLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const res = await apiFetch(`/companies/${id}`);
-  const company: Company | null = res.ok ? await res.json() : null;
+
+  const [companyRes, alertsSummaryRes, recsRes] = await Promise.all([
+    apiFetch(`/companies/${id}`),
+    apiFetch(`/companies/${id}/alerts/summary`),
+    apiFetch(`/companies/${id}/recommendations`),
+  ]);
+
+  const company: Company | null = companyRes.ok ? await companyRes.json() : null;
+  const alertsSummary: AlertSummaryItem[] = alertsSummaryRes.ok
+    ? await alertsSummaryRes.json()
+    : [];
+  const recommendations: Recommendation[] = recsRes.ok ? await recsRes.json() : [];
+
+  const urgentAlerts = alertsSummary
+    .filter((a) => a.level === "critique" || a.level === "important")
+    .reduce((sum, a) => sum + a.count, 0);
+  const pendingRecs = recommendations.filter((r) => r.status === "nouvelle").length;
 
   return (
-    <main className="mx-auto w-full max-w-3xl p-6 sm:p-8">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        {company ? (
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{company.name}</h1>
-            <p className="mt-1 text-sm text-foreground-muted">
-              {company.sector} · {company.location}
-            </p>
+    <div className="flex min-h-screen flex-1">
+      <CompanyNav
+        companyId={id}
+        company={company}
+        alertCount={urgentAlerts}
+        recommendationCount={pendingRecs}
+      />
+
+      <main className="flex-1 px-6 py-8 sm:px-10">
+        <div className="mx-auto w-full max-w-3xl">
+          <div className="mb-6 flex justify-end">
+            <form action={logoutAction}>
+              <Button type="submit" variant="ghost" size="sm">
+                Déconnexion
+              </Button>
+            </form>
           </div>
-        ) : (
-          <div />
-        )}
 
-        <form action={logoutAction}>
-          <Button type="submit" variant="ghost" size="sm">
-            Déconnexion
-          </Button>
-        </form>
-      </div>
-
-      <CompanyNav companyId={id} />
-
-      {children}
-    </main>
+          {children}
+        </div>
+      </main>
+    </div>
   );
 }
