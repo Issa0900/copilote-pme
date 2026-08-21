@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Callable
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import require_company_access
@@ -14,6 +15,7 @@ from app.reports import (
     generate_daily_report_content,
     generate_monthly_report_content,
     generate_weekly_report_content,
+    is_period_closed,
 )
 from app.schemas import ReportRead
 
@@ -31,26 +33,75 @@ def _get_company_or_404(company_id: uuid.UUID, db: Session) -> Company:
     return company
 
 
-def _get_or_create_report(
-    company_id: uuid.UUID,
-    report_type: str,
-    period,
-    content_generator: Callable,
-    db: Session,
-) -> Report:
-    """Cherche un rapport existant pour (company_id, report_type, period),
-    sinon le génère et le persiste (idempotent : un seul rapport par type
-    et par période)."""
-    existing = (
+def _find_report(company_id: uuid.UUID, report_type: str, period: date, db: Session) -> Report | None:
+    return (
         db.query(Report)
         .filter(Report.company_id == company_id, Report.type == report_type, Report.period == period)
         .first()
     )
+
+
+def _insert_report_or_get_existing(
+    report: Report,
+    company_id: uuid.UUID,
+    report_type: str,
+    period: date,
+    db: Session,
+) -> Report:
+    """Insère le rapport, ou renvoie celui déjà inséré par une requête
+    concurrente entre-temps (contrainte ``uq_report_company_type_period``)
+    plutôt que de laisser l'``IntegrityError`` remonter en 500 (même course
+    que pour les recommandations : GET sans coordination entre requêtes)."""
+    db.add(report)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = _find_report(company_id, report_type, period, db)
+        if existing is None:
+            raise
+        return existing
+    db.refresh(report)
+    return report
+
+
+def _get_or_create_report(
+    company_id: uuid.UUID,
+    report_type: str,
+    period: date,
+    content_generator: Callable,
+    db: Session,
+    today: date | None = None,
+) -> Report:
+    """Cherche un rapport existant pour (company_id, report_type, period).
+
+    S'il n'existe pas encore : calcule son contenu (fenêtre jusqu'à
+    ``today``). Si la période est déjà terminée (cf. ``is_period_closed`` —
+    toujours vrai pour un rapport quotidien), le résultat est persisté de
+    façon immuable (idempotent : un seul rapport par type et par période).
+    Sinon (semaine/mois en cours), le contenu à jour est retourné sans être
+    persisté, pour qu'une consultation ultérieure dans la même période le
+    recalcule avec des données plus fraîches plutôt que de figer une
+    fenêtre partielle dès la première consultation."""
+    today = today or datetime.now(timezone.utc).date()
+
+    existing = _find_report(company_id, report_type, period, db)
     if existing is not None:
         return existing
 
     sync_recommendations(company_id, db)
     content = content_generator(company_id, period, db)
+
+    if not is_period_closed(report_type, period, today):
+        return Report(
+            id=uuid.uuid4(),
+            company_id=company_id,
+            type=report_type,
+            period=period,
+            generated_at=datetime.now(timezone.utc),
+            summary=build_summary(content),
+            content=content,
+        )
 
     report = Report(
         company_id=company_id,
@@ -59,10 +110,7 @@ def _get_or_create_report(
         summary=build_summary(content),
         content=content,
     )
-    db.add(report)
-    db.commit()
-    db.refresh(report)
-    return report
+    return _insert_report_or_get_existing(report, company_id, report_type, period, db)
 
 
 @router.get("/daily", response_model=ReportRead)

@@ -48,6 +48,7 @@ def get_company_alerts(company_id: uuid.UUID, db: Session = Depends(get_db)) -> 
             message=a.message,
             source=a.source,
             source_id=a.source_id,
+            category=a.category,
         )
         for a in alerts
     ]

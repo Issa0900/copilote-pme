@@ -1,5 +1,10 @@
 from app.anomalies import Anomaly
-from app.recommendations import _source_key, build_recommendation_drafts
+from app.models import Recommendation
+from app.recommendations import (
+    _commit_new_recommendations,
+    _source_key,
+    build_recommendation_drafts,
+)
 
 
 def _trend_anomaly(category="Fournitures", change_pct=50.0):
@@ -54,3 +59,93 @@ def test_source_key_same_within_same_detection_period():
 def test_build_recommendation_drafts_uses_given_detection_period():
     drafts = build_recommendation_drafts([_trend_anomaly()], detection_period="2024-06")
     assert drafts[0].source_key.endswith("2024-06")
+
+
+def test_build_recommendation_drafts_keeps_category():
+    drafts = build_recommendation_drafts([_outlier_anomaly("high"), _trend_anomaly()])
+    assert {d.category for d in drafts} == {None, "Fournitures"}
+
+
+def test_get_company_recommendations_exposes_category_field(
+    authed_client, make_import, make_transaction
+):
+    # Une recommandation générée à partir d'une anomalie de catégorie connue
+    # (ici "Salaires") doit porter cette catégorie dans la réponse API.
+    client, _user, company = authed_client
+    imp = make_import(company.id)
+
+    for _ in range(20):
+        make_transaction(company.id, imp.id, amount=-100, category="Salaires")
+    make_transaction(company.id, imp.id, amount=-10_000, category="Salaires")
+
+    resp = client.get(f"/companies/{company.id}/recommendations")
+    assert resp.status_code == 200
+    recs = resp.json()
+
+    salaires_recs = [r for r in recs if r["category"] == "Salaires"]
+    assert salaires_recs
+    assert all(r["type"] == "transaction_outlier" for r in salaires_recs)
+
+
+def _make_recommendation(company_id, source_key, **overrides) -> Recommendation:
+    return Recommendation(
+        company_id=company_id,
+        source_type=overrides.pop("source_type", "anomaly"),
+        source_key=source_key,
+        type=overrides.pop("type", "transaction_outlier"),
+        situation=overrides.pop("situation", "s"),
+        analysis=overrides.pop("analysis", "a"),
+        impact=overrides.pop("impact", "i"),
+        action=overrides.pop("action", "act"),
+        priority=overrides.pop("priority", "urgente"),
+        **overrides,
+    )
+
+
+def test_commit_new_recommendations_rolls_back_on_concurrent_duplicate(
+    db_session, make_company
+):
+    # Régression : deux requêtes GET concurrentes constatent toutes les deux
+    # qu'une source_key n'existe pas encore et tentent de l'insérer -> viole
+    # uq_recommendation_source. On simule la ligne "concurrente" déjà
+    # commitée (comme si une autre requête l'avait insérée en premier), puis
+    # on tente d'insérer un doublon avec la même source_key.
+    company = make_company()
+
+    concurrent = _make_recommendation(
+        company.id, "transaction_outlier::txn-1", situation="version concurrente"
+    )
+    db_session.add(concurrent)
+    db_session.commit()  # simule une requête concurrente déjà commitée
+
+    duplicate = _make_recommendation(
+        company.id, "transaction_outlier::txn-1", situation="version en conflit"
+    )
+    db_session.add(duplicate)
+
+    _commit_new_recommendations(db_session)  # ne doit pas lever d'IntegrityError
+
+    recs = (
+        db_session.query(Recommendation)
+        .filter(Recommendation.company_id == company.id)
+        .all()
+    )
+    # Seule la version déjà commitée par la requête concurrente subsiste ;
+    # notre insertion en conflit a été annulée (rollback), pas persistée.
+    assert len(recs) == 1
+    assert recs[0].situation == "version concurrente"
+
+
+def test_commit_new_recommendations_commits_when_no_conflict(db_session, make_company):
+    company = make_company()
+    rec = _make_recommendation(company.id, "transaction_outlier::txn-2")
+    db_session.add(rec)
+
+    _commit_new_recommendations(db_session)
+
+    recs = (
+        db_session.query(Recommendation)
+        .filter(Recommendation.company_id == company.id)
+        .all()
+    )
+    assert len(recs) == 1

@@ -176,6 +176,7 @@ class RecommendationRead(BaseModel):
     id: uuid.UUID
     company_id: uuid.UUID
     type: str
+    category: str | None
     situation: str
     analysis: str
     impact: str
@@ -203,6 +204,7 @@ class AlertRead(BaseModel):
     message: str
     source: str
     source_id: str | None
+    category: str | None
 
 
 class AlertSummaryItem(BaseModel):

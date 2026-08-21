@@ -17,6 +17,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.anomalies import Anomaly, detect_anomalies
@@ -30,12 +31,13 @@ SEVERITY_TO_PRIORITY = {
 
 ANALYSIS_TEXT = {
     "transaction_outlier": (
-        "Écart statistique détecté par rapport à la moyenne des transactions "
-        "validées de même nature (revenu ou dépense) pour cette entreprise."
+        "Ce montant s'écarte nettement de vos habitudes récentes pour ce type de "
+        "transaction (revenu ou dépense), en comparaison de vos autres transactions "
+        "validées."
     ),
     "category_trend": (
-        "Écart statistique entre le total de la période récente et celui de la "
-        "période précédente pour cette catégorie, sur les transactions validées."
+        "Le total de cette catégorie a nettement changé entre la période récente "
+        "et la période précédente, en comparant vos transactions validées."
     ),
 }
 
@@ -49,6 +51,7 @@ class RecommendationDraft:
     impact: str
     action: str
     priority: str
+    category: str | None = None
 
 
 def _source_key(anomaly: Anomaly, detection_period: str) -> str:
@@ -119,9 +122,30 @@ def build_recommendation_drafts(
                 impact=impact,
                 action=action,
                 priority=SEVERITY_TO_PRIORITY[anomaly.severity],
+                category=anomaly.category,
             )
         )
     return drafts
+
+
+def _commit_new_recommendations(db: Session) -> None:
+    """Commit les recommandations ajoutées à la session (via ``db.add``).
+
+    Ce endpoint est un GET appelé sans coordination entre requêtes
+    concurrentes (deux onglets, préfetch, plusieurs utilisateurs) : deux
+    requêtes peuvent constater simultanément qu'une même ``source_key``
+    n'existe pas encore et tenter de l'insérer toutes les deux, ce qui viole
+    ``uq_recommendation_source``. Plutôt que de laisser l'``IntegrityError``
+    remonter en 500, on annule notre transaction — les recommandations déjà
+    commitées par la requête concurrente restent visibles pour la lecture
+    qui suit cet appel (cf. routers/recommendations.py::list_recommendations).
+    Pas besoin de relire ici : sync_recommendations ne retourne rien, seul
+    l'appelant lit la liste finale.
+    """
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
 
 
 def sync_recommendations(company_id: uuid.UUID, db: Session) -> None:
@@ -146,15 +170,18 @@ def sync_recommendations(company_id: uuid.UUID, db: Session) -> None:
         )
     }
 
-    for draft in drafts:
-        if draft.source_key in existing_keys:
-            continue
+    new_drafts = [draft for draft in drafts if draft.source_key not in existing_keys]
+    if not new_drafts:
+        return
+
+    for draft in new_drafts:
         db.add(
             Recommendation(
                 company_id=company_id,
                 source_type="anomaly",
                 source_key=draft.source_key,
                 type=draft.type,
+                category=draft.category,
                 situation=draft.situation,
                 analysis=draft.analysis,
                 impact=draft.impact,
@@ -162,4 +189,4 @@ def sync_recommendations(company_id: uuid.UUID, db: Session) -> None:
                 priority=draft.priority,
             )
         )
-    db.commit()
+    _commit_new_recommendations(db)

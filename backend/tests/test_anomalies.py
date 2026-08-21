@@ -67,7 +67,7 @@ def test_revenue_and_expense_populations_are_independent():
     anomalies = detect_anomalies(revenues + expenses)
     outlier_anomalies = [a for a in anomalies if a.type == "transaction_outlier"]
     assert len(outlier_anomalies) == 1
-    assert outlier_anomalies[0].message.startswith("Une transaction dépense")
+    assert outlier_anomalies[0].message.startswith("Une dépense inhabituelle")
 
 
 def test_category_trend_requires_minimum_per_period():

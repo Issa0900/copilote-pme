@@ -37,6 +37,28 @@ def test_alerts_from_anomalies_maps_severity_to_level():
     assert [a.level for a in alerts] == ["critique", "important", "surveillance"]
 
 
+def test_alerts_from_anomalies_keeps_category():
+    anomalies = [
+        Anomaly(
+            type="transaction_outlier", severity="high", message="m", category="Salaires"
+        ),
+        Anomaly(type="category_trend", severity="low", message="m", category="Ventes"),
+        Anomaly(type="transaction_outlier", severity="medium", message="m", category=None),
+    ]
+    alerts = alerts_from_anomalies(anomalies)
+    assert [a.category for a in alerts] == ["Salaires", "Ventes", None]
+
+
+def test_alerts_from_imports_category_is_always_none():
+    alerts = alerts_from_imports(
+        [
+            _import(0, 0, status="echoue", error_message="boom"),
+            _import(rows_processed=10, rows_quarantined=4),
+        ]
+    )
+    assert all(a.category is None for a in alerts)
+
+
 def test_alerts_from_imports_failed_import_is_critical():
     alerts = alerts_from_imports([_import(0, 0, status="echoue", error_message="boom")])
     assert len(alerts) == 1
@@ -83,3 +105,31 @@ def test_summarize_alerts_counts_correctly():
     assert counts["critique"] == 2
     assert counts["surveillance"] == 1
     assert counts["important"] == 0
+
+
+def test_get_company_alerts_exposes_category_field(
+    authed_client, make_import, make_transaction
+):
+    # Une alerte issue d'une anomalie de type transaction_outlier doit porter
+    # la catégorie de la transaction source ; une alerte issue d'un import
+    # échoué n'a pas de catégorie pertinente (category: null).
+    client, _user, company = authed_client
+    imp = make_import(company.id)
+
+    for _ in range(20):
+        make_transaction(company.id, imp.id, amount=-100, category="Salaires")
+    outlier = make_transaction(company.id, imp.id, amount=-10_000, category="Salaires")
+
+    make_import(company.id, status="echoue", error_message="fichier corrompu")
+
+    resp = client.get(f"/companies/{company.id}/alerts")
+    assert resp.status_code == 200
+    alerts = resp.json()
+
+    outlier_alerts = [a for a in alerts if a["source_id"] == str(outlier.id)]
+    assert len(outlier_alerts) == 1
+    assert outlier_alerts[0]["category"] == "Salaires"
+
+    import_alerts = [a for a in alerts if a["source"] == "import"]
+    assert import_alerts
+    assert all(a["category"] is None for a in import_alerts)

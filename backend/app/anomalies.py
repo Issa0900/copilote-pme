@@ -23,6 +23,30 @@ OUTLIER_Z_THRESHOLD = 2.0
 MIN_PER_PERIOD_FOR_TREND = 2
 TREND_CHANGE_THRESHOLD = 0.3  # 30 %
 
+MONTHS_FR = [
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+]
+
+
+def _format_date_fr(d: date) -> str:
+    """Formate une date en français lisible (ex. « 15 mars 2026 »).
+
+    Pas de dépendance à `locale` (non fiable en multi-plateforme/serveur) :
+    on mappe directement le mois plutôt que d'utiliser `strftime("%B")`.
+    """
+    return f"{d.day} {MONTHS_FR[d.month - 1]} {d.year}"
+
 
 @dataclass
 class Anomaly:
@@ -54,9 +78,17 @@ def _trend_severity(change: float) -> str:
 def _detect_transaction_outliers(transactions: list[Transaction]) -> list[Anomaly]:
     anomalies: list[Anomaly] = []
 
-    for label, population in (
-        ("revenu", [t for t in transactions if t.amount is not None and t.amount > 0]),
-        ("dépense", [t for t in transactions if t.amount is not None and t.amount < 0]),
+    for subject, participle, population in (
+        (
+            "Un revenu inhabituel",
+            "détecté",
+            [t for t in transactions if t.amount is not None and t.amount > 0],
+        ),
+        (
+            "Une dépense inhabituelle",
+            "détectée",
+            [t for t in transactions if t.amount is not None and t.amount < 0],
+        ),
     ):
         if len(population) < MIN_TRANSACTIONS_FOR_OUTLIER_STATS:
             continue
@@ -75,8 +107,8 @@ def _detect_transaction_outliers(transactions: list[Transaction]) -> list[Anomal
                         type="transaction_outlier",
                         severity=_outlier_severity(z),
                         message=(
-                            f"Une transaction {label} inhabituelle de {amount:.2f} $ a été "
-                            f"détectée le {t.date.isoformat() if t.date else 'date inconnue'}"
+                            f"{subject} de {amount:.2f} $ a été {participle} le "
+                            f"{_format_date_fr(t.date) if t.date else 'date inconnue'}"
                             + (f" ({t.category})" if t.category else "")
                             + f", contre une moyenne de {mean:.2f} $."
                         ),
@@ -117,7 +149,7 @@ def _detect_category_trends(transactions: list[Transaction]) -> list[Anomaly]:
 
         change = (recent_total - earlier_total) / earlier_total
         if abs(change) >= TREND_CHANGE_THRESHOLD:
-            direction = "supérieures" if change > 0 else "inférieures"
+            direction = "supérieurs" if change > 0 else "inférieurs"
             anomalies.append(
                 Anomaly(
                     type="category_trend",

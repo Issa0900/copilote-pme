@@ -15,7 +15,7 @@ quel que soit le type de rapport.
 """
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -43,6 +43,36 @@ def _to_utc_date(value: datetime) -> date:
 
 def _today_utc() -> date:
     return datetime.now(timezone.utc).date()
+
+
+def period_end(report_type: str, period: date) -> date:
+    """Dernier jour calendaire de la période (inclus).
+
+    Pour un rapport quotidien, la période est déjà un jour unique."""
+    if report_type == "hebdomadaire":
+        return period + timedelta(days=6)
+    if report_type == "mensuel":
+        if period.month == 12:
+            next_month_start = period.replace(year=period.year + 1, month=1, day=1)
+        else:
+            next_month_start = period.replace(month=period.month + 1, day=1)
+        return next_month_start - timedelta(days=1)
+    return period
+
+
+def is_period_closed(report_type: str, period: date, today: date) -> bool:
+    """Une période hebdomadaire/mensuelle n'est « figeable » (persistable de
+    façon immuable) qu'une fois entièrement écoulée — le lundi suivant pour
+    un rapport hebdomadaire, le 1er du mois suivant pour un rapport mensuel.
+    Consultée avant cette date, la fenêtre de calcul est nécessairement
+    partielle (elle s'arrête à ``today``) : la figer prématurément
+    reviendrait à montrer indéfiniment les données du premier jour de
+    consultation. Le rapport quotidien est toujours considéré clos : sa
+    période est déjà un jour unique, ce n'est pas concerné par ce problème.
+    """
+    if report_type == "quotidien":
+        return True
+    return today > period_end(report_type, period)
 
 
 def _build_resume(

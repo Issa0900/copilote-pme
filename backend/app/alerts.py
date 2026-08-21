@@ -36,6 +36,7 @@ class Alert:
     message: str
     source: str  # "anomaly" | "import"
     source_id: str | None = None
+    category: str | None = None
 
 
 def alerts_from_anomalies(anomalies: list[Anomaly]) -> list[Alert]:
@@ -50,6 +51,7 @@ def alerts_from_anomalies(anomalies: list[Anomaly]) -> list[Alert]:
             message=a.message,
             source="anomaly",
             source_id=a.transaction_id,
+            category=a.category,
         )
         for a in anomalies
     ]

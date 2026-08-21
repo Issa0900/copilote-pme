@@ -149,6 +149,7 @@ class Recommendation(Base):
     source_type: Mapped[str] = mapped_column(String(30), nullable=False)
     source_key: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
+    category: Mapped[str | None] = mapped_column(String(255), nullable=True)
     situation: Mapped[str] = mapped_column(Text, nullable=False)
     analysis: Mapped[str] = mapped_column(Text, nullable=False)
     impact: Mapped[str] = mapped_column(Text, nullable=False)
