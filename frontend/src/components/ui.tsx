@@ -30,6 +30,19 @@ const TONE_TEXT: Record<Tone, string> = {
   info: "text-info",
 };
 
+// Rail de statut (skill/SKILL.md) : bordure gauche de 4px dans la couleur
+// sémantique pleine (pas la teinte adoucie utilisée pour le reste du
+// contour), sur toute carte porteuse d'un état.
+const TONE_RAIL: Record<Tone, string> = {
+  neutral: "border-l-border",
+  accent: "border-l-accent",
+  danger: "border-l-danger",
+  warning: "border-l-warning",
+  surveillance: "border-l-surveillance",
+  success: "border-l-success",
+  info: "border-l-info",
+};
+
 // Chip de statut (compteurs par sévérité, étiquettes de priorité, etc.) : le
 // fond est dérivé de la couleur du texte elle-même plutôt qu'un ton fixe
 // précalculé, pour rester lisible quel que soit le thème (skill/SKILL.md).
@@ -53,6 +66,29 @@ export function Badge({
   );
 }
 
+export type TrustLevel = "fait" | "analyse" | "hypothese" | "recommandation" | "prevision";
+
+const TRUST_LABELS: Record<TrustLevel, string> = {
+  fait: "Fait",
+  analyse: "Analyse",
+  hypothese: "Hypothèse",
+  recommandation: "Recommandation",
+  prevision: "Prévision",
+};
+
+// Étiquette de fiabilité épistémique (skill/SKILL.md) — obligatoire sur toute
+// affirmation générée par le système (principes de confiance du PRD). Reste
+// gris neutre en toutes circonstances : contrairement à Badge, elle
+// n'emprunte jamais au système `tone` — ce n'est pas un statut, c'est un
+// niveau de certitude, et le colorer donnerait l'impression inverse.
+export function TrustBadge({ level }: { level: TrustLevel }) {
+  return (
+    <span className="inline-flex items-center whitespace-nowrap rounded border border-border px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-foreground-muted">
+      {TRUST_LABELS[level]}
+    </span>
+  );
+}
+
 export function Card({
   children,
   className = "",
@@ -70,12 +106,16 @@ export function Card({
   const toneClass = tone
     ? TONE_STYLES[tone]
     : "bg-surface border-border text-foreground";
+  // Le rail de statut n'a de sens que sur une carte qui porte réellement un
+  // état sémantique (`tone` explicite) — une carte neutre sans `tone` garde
+  // son contour uniforme actuel.
+  const railClass = tone ? `border-l-4 ${TONE_RAIL[tone]}` : "";
   return (
     <div
       style={style}
       className={`rounded-[20px] border p-4 shadow-sm transition-transform duration-200 ease-out ${
         interactive ? "hover:-translate-y-[3px] hover:scale-[1.02] hover:shadow-md" : ""
-      } ${toneClass} ${className}`}
+      } ${toneClass} ${railClass} ${className}`}
     >
       {children}
     </div>

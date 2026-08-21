@@ -1,4 +1,4 @@
-import { Badge, Card, EmptyState, SectionHeading, StatTile } from "@/components/ui";
+import { Badge, Card, EmptyState, SectionHeading, StatTile, TrustBadge } from "@/components/ui";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Report } from "@/lib/types";
 
@@ -16,7 +16,12 @@ export function ReportView({
       </p>
 
       <div>
-        <SectionHeading>Résumé</SectionHeading>
+        <SectionHeading>
+          <span className="flex flex-wrap items-center gap-2">
+            <TrustBadge level="fait" />
+            <span>Résumé</span>
+          </span>
+        </SectionHeading>
         <p className="mb-2 text-sm">{report.content.resume.etat_general}</p>
         <ul className="list-inside list-disc text-sm text-foreground-muted">
           {report.content.resume.evenements_importants.map((e, i) => (
@@ -26,7 +31,12 @@ export function ReportView({
       </div>
 
       <div>
-        <SectionHeading>Performance</SectionHeading>
+        <SectionHeading>
+          <span className="flex flex-wrap items-center gap-2">
+            <TrustBadge level="fait" />
+            <span>Performance</span>
+          </span>
+        </SectionHeading>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StatTile
             label="Revenus"
@@ -64,6 +74,9 @@ export function ReportView({
           <ul className="space-y-2">
             {report.content.risques.map((r, i) => (
               <Card key={i} tone="danger">
+                <div className="mb-1">
+                  <TrustBadge level="analyse" />
+                </div>
                 <Badge tone="danger">{r.priority}</Badge>
                 <span className="ml-2 text-sm">{r.situation}</span>
               </Card>

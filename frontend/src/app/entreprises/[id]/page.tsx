@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { CategoryBreakdown } from "@/components/category-breakdown";
 import { NetTrendChart } from "@/components/net-trend-chart";
-import { Badge, Card, EmptyState, LinkButton, SectionHeading, StatTile } from "@/components/ui";
+import { Badge, Card, EmptyState, LinkButton, SectionHeading, StatTile, TrustBadge } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { ALERT_LEVEL_LABELS, ALERT_LEVEL_TONE } from "@/lib/alert-levels";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -106,17 +106,22 @@ export default async function CompanyDashboardPage({
 
       <div className="animate-enter" style={{ "--enter-delay": "0.05s" } as React.CSSProperties}>
         <SectionHeading>
-          FAIT — calculé directement à partir des données validées
-          {kpis.period_start && kpis.period_end && (
-            <>
-              {" "}
-              (
-              <span className="font-mono">
-                {formatDate(kpis.period_start)} – {formatDate(kpis.period_end)}
-              </span>
-              )
-            </>
-          )}
+          <span className="flex flex-wrap items-center gap-2">
+            <TrustBadge level="fait" />
+            <span className="normal-case tracking-normal">
+              Calculé directement à partir des données validées
+              {kpis.period_start && kpis.period_end && (
+                <>
+                  {" "}
+                  (
+                  <span className="font-mono">
+                    {formatDate(kpis.period_start)} – {formatDate(kpis.period_end)}
+                  </span>
+                  )
+                </>
+              )}
+            </span>
+          </span>
         </SectionHeading>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StatTile label="Revenus" value={formatCurrency(kpis.revenue_total)} />
@@ -164,7 +169,12 @@ export default async function CompanyDashboardPage({
 
       <div className="animate-enter" style={{ "--enter-delay": "0.2s" } as React.CSSProperties}>
         <SectionHeading>
-          ANALYSE — écarts statistiques détectés par le système, à valider
+          <span className="flex flex-wrap items-center gap-2">
+            <TrustBadge level="analyse" />
+            <span className="normal-case tracking-normal">
+              Écarts statistiques détectés par le système, à valider
+            </span>
+          </span>
         </SectionHeading>
         {anomalies.length === 0 ? (
           <EmptyState>

@@ -54,6 +54,7 @@ export type Alert = {
   message: string;
   source: string;
   source_id: string | null;
+  category: string | null;
 };
 
 export type AlertSummaryItem = {
@@ -67,6 +68,7 @@ export type Recommendation = {
   id: string;
   company_id: string;
   type: string;
+  category: string | null;
   situation: string;
   analysis: string;
   impact: string;
