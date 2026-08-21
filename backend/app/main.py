@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
+from app.rate_limit import limiter
 from app.routers import alerts, anomalies, auth, companies, dashboard, imports, meta, recommendations, reports
 
 # VULN-004 : /docs, /redoc et /openapi.json ne doivent pas être exposés en
@@ -14,6 +17,23 @@ app = FastAPI(
     redoc_url="/redoc" if _docs_enabled else None,
     openapi_url="/openapi.json" if _docs_enabled else None,
 )
+
+# VULN-005 : rate limiting sur les endpoints publics non authentifiés
+# (/auth/login, /auth/register) — cf. app/rate_limit.py pour les seuils.
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    # slowapi renvoie par défaut {"error": "..."} — on harmonise avec le
+    # reste de l'API qui renvoie systématiquement {"detail": "..."} via
+    # HTTPException (cf. schemas.py / routers), pour ne pas surprendre un
+    # client qui gère déjà ce format.
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Trop de tentatives, réessayez dans quelques instants"},
+    )
+
 
 app.add_middleware(
     CORSMiddleware,

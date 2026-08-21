@@ -13,17 +13,28 @@ from fastapi.testclient import TestClient
 from app.database import get_db
 from app.main import app
 from app.models import Company, User
+from app.rate_limit import limiter
 
 
 @pytest.fixture()
 def client(db_session):
     """TestClient non authentifié, avec get_db pointé vers la transaction de
-    test (cf. conftest.authed_client pour le même principe avec un token)."""
+    test (cf. conftest.authed_client pour le même principe avec un token).
+
+    Le rate limiter (slowapi) garde son compteur en mémoire au niveau du
+    process, indexé par IP — et TestClient utilise la même IP factice
+    ("testclient") pour toutes les requêtes, quel que soit le test. Sans
+    reset, les tentatives faites par un test précédent compteraient dans le
+    quota du test suivant (et inversement, ce test polluerait les suivants).
+    On réinitialise donc le compteur avant *et* après chaque test qui utilise
+    ce client, pour que chaque test dispose de son propre quota plein."""
+    limiter.reset()
     app.dependency_overrides[get_db] = lambda: db_session
     try:
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_db, None)
+        limiter.reset()
 
 
 def _valid_register_payload(**overrides):
@@ -120,3 +131,60 @@ class TestLogin:
         )
         assert resp.status_code == 401
         assert resp.json()["detail"] == "Email ou mot de passe incorrect"
+
+
+class TestRateLimiting:
+    """Correctif VULN-005 : /auth/login et /auth/register n'avaient aucun
+    rate limiting (brute-force sur login, énumération d'emails via le 409
+    sur register). Cf. app/rate_limit.py et les commentaires sur les
+    décorateurs @limiter.limit(...) dans app/routers/auth.py pour le détail
+    des seuils retenus."""
+
+    def test_login_blocked_after_10_attempts_per_minute(self, client):
+        payload = _valid_register_payload()
+        client.post("/auth/register", json=payload)
+
+        wrong_login = {"email": payload["email"], "password": "mot-de-passe-errone"}
+
+        # Les 10 premières tentatives passent le rate limiter (elles restent
+        # 401 puisque le mot de passe est faux, seule la limite nous
+        # intéresse ici).
+        for _ in range(10):
+            resp = client.post("/auth/login", json=wrong_login)
+            assert resp.status_code == 401
+
+        blocked = client.post("/auth/login", json=wrong_login)
+        assert blocked.status_code == 429
+        assert blocked.json() == {
+            "detail": "Trop de tentatives, réessayez dans quelques instants"
+        }
+
+    def test_login_under_threshold_is_not_blocked(self, client):
+        payload = _valid_register_payload()
+        client.post("/auth/register", json=payload)
+
+        for _ in range(3):
+            resp = client.post(
+                "/auth/login",
+                json={"email": payload["email"], "password": payload["password"]},
+            )
+            assert resp.status_code == 200
+
+    def test_register_blocked_after_5_attempts_per_minute(self, client):
+        # Les 5 premières inscriptions (emails distincts) passent le rate
+        # limiter, la 6e est bloquée quel que soit l'email utilisé — la
+        # limite est par IP, pas par email.
+        for _ in range(5):
+            resp = client.post("/auth/register", json=_valid_register_payload())
+            assert resp.status_code == 201
+
+        blocked = client.post("/auth/register", json=_valid_register_payload())
+        assert blocked.status_code == 429
+        assert blocked.json() == {
+            "detail": "Trop de tentatives, réessayez dans quelques instants"
+        }
+
+    def test_register_under_threshold_is_not_blocked(self, client):
+        for _ in range(3):
+            resp = client.post("/auth/register", json=_valid_register_payload())
+            assert resp.status_code == 201
