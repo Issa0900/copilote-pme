@@ -1,0 +1,112 @@
+"""Centre d'alertes (PRD Module 31).
+
+Agrège, à la volée, les signaux déjà produits par les modules existants
+(anomalies détectées, imports en échec ou partiellement en quarantaine) en
+5 niveaux de sévérité définis par le PRD : critique, important, surveillance,
+opportunite, information.
+
+Aucune nouvelle entité persistée : le modèle de données minimal du PRD
+(section 36) ne définit pas d'entité « Alert », et il n'y a pas encore de
+Risk/Opportunity/Recommendation générés (Modules 16-19) pour alimenter les
+niveaux opportunité/information. Ce sont donc les seules sources honnêtes
+disponibles pour l'instant — pas d'état persistant (lu/résolu), pas de
+canal de notification (Module 32, non implémenté).
+"""
+
+from dataclasses import dataclass
+
+from app.anomalies import Anomaly
+from app.models import Import
+
+QUARANTINE_RATIO_IMPORTANT = 0.3
+
+AlertLevel = str  # "critique" | "important" | "surveillance" | "opportunite" | "information"
+
+ANOMALY_SEVERITY_TO_LEVEL: dict[str, AlertLevel] = {
+    "high": "critique",
+    "medium": "important",
+    "low": "surveillance",
+}
+
+
+@dataclass
+class Alert:
+    level: AlertLevel
+    title: str
+    message: str
+    source: str  # "anomaly" | "import"
+    source_id: str | None = None
+
+
+def alerts_from_anomalies(anomalies: list[Anomaly]) -> list[Alert]:
+    titles = {
+        "transaction_outlier": "Transaction inhabituelle",
+        "category_trend": "Tendance inhabituelle",
+    }
+    return [
+        Alert(
+            level=ANOMALY_SEVERITY_TO_LEVEL[a.severity],
+            title=titles.get(a.type, "Anomalie détectée"),
+            message=a.message,
+            source="anomaly",
+            source_id=a.transaction_id,
+        )
+        for a in anomalies
+    ]
+
+
+def alerts_from_imports(imports: list[Import]) -> list[Alert]:
+    alerts: list[Alert] = []
+    for imp in imports:
+        if imp.status == "echoue":
+            alerts.append(
+                Alert(
+                    level="critique",
+                    title="Import échoué",
+                    message=f"L'import « {imp.file_name} » a échoué : "
+                    f"{imp.error_message or 'raison inconnue'}.",
+                    source="import",
+                    source_id=str(imp.id),
+                )
+            )
+            continue
+
+        if imp.rows_quarantined > 0 and imp.rows_processed > 0:
+            ratio = imp.rows_quarantined / imp.rows_processed
+            level = "important" if ratio > QUARANTINE_RATIO_IMPORTANT else "surveillance"
+            alerts.append(
+                Alert(
+                    level=level,
+                    title="Données à valider",
+                    message=(
+                        f"{imp.rows_quarantined} ligne(s) sur {imp.rows_processed} de "
+                        f"l'import « {imp.file_name} » sont en quarantaine et exclues "
+                        f"des KPI tant qu'elles ne sont pas validées."
+                    ),
+                    source="import",
+                    source_id=str(imp.id),
+                )
+            )
+    return alerts
+
+
+LEVEL_RANK = {
+    "critique": 0,
+    "important": 1,
+    "surveillance": 2,
+    "opportunite": 3,
+    "information": 4,
+}
+
+
+def sort_alerts(alerts: list[Alert]) -> list[Alert]:
+    return sorted(alerts, key=lambda a: LEVEL_RANK[a.level])
+
+
+def summarize_alerts(alerts: list[Alert]) -> dict[AlertLevel, int]:
+    """Compte les alertes par niveau, les 5 niveaux étant toujours présents
+    (à 0 si aucune alerte de ce niveau), dans l'ordre de sévérité de LEVEL_RANK."""
+    counts = {level: 0 for level in LEVEL_RANK}
+    for alert in alerts:
+        counts[alert.level] += 1
+    return counts

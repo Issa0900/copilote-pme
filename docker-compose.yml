@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    # Identifiants de dev local uniquement — ne jamais réutiliser en staging/production
+    environment:
+      POSTGRES_USER: pilote
+      POSTGRES_PASSWORD: pilote
+      POSTGRES_DB: pilote
+    ports:
+      - "5433:5432"
+    volumes:
+      - pilote_pgdata:/var/lib/postgresql/data
+
+volumes:
+  pilote_pgdata:

@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics=""><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"><style>body{margin:0;background:#E7EAE7;font-family:'IBM Plex Sans',system-ui,sans-serif;text-wrap:pretty}a{color:#1B6E62}a:hover{color:#12564C}</style></helmet>
+
+<section style="padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.09)" id="t2">
+  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">
+    <a href="#t2" style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#121820;color:#fff;border-radius:4px;text-decoration:none">2</a>
+    <span style="font:600 13px 'IBM Plex Sans',sans-serif;color:#121820">Prototype cliquable — 7 écrans</span>
+  </div>
+  <p style="margin:0 0 22px;max-width:640px;font:400 13px/1.6 'IBM Plex Sans',sans-serif;color:#5B6660">Bâti sur la structure de <a href="#1a" style="font:600 11px 'IBM Plex Mono',monospace;text-decoration:none;background:rgba(0,0,0,.07);color:#121820;padding:2px 6px;border-radius:4px">1a</a>. Onglets en bas, accueil santé, centre d'alertes groupé par niveau, fiche recommandation, centre de tâches, KPI par dimension, rapport quotidien, assistant. Le sélecteur de profil change l'accueil et l'ordre des onglets.</p>
+
+  <div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div style="display:flex;align-items:baseline;gap:8px;font:400 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><a href="#2a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#121820;border-radius:5px;text-decoration:none">2a</a>Flux interactif</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px" style="background-color: #E2BC46">
+        <div style="height:100%;display:flex;flex-direction:column;background:#F1F3F1;font-family:'IBM Plex Sans',sans-serif">
+
+          <div style="flex-shrink:0;padding:60px 20px 12px;background:#121820;color:#fff">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div>
+                <div style="font:600 13px 'IBM Plex Sans',sans-serif;letter-spacing:.02em">Atelier Bertin</div>
+                <div style="font:400 11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.55);margin-top:2px">Ébénisterie · Sherbrooke</div>
+              </div>
+              <div style="display:flex;background:rgba(255,255,255,.1);border-radius:6px;padding:2px">
+                <button type="button" onClick="{{ setProprio }}" style="border:0;cursor:pointer;font:500 11px 'IBM Plex Sans',sans-serif;padding:7px 10px;border-radius:5px;background:{{ proprioBg }};color:{{ proprioFg }}">Propriétaire</button>
+                <button type="button" onClick="{{ setGestion }}" style="border:0;cursor:pointer;font:500 11px 'IBM Plex Sans',sans-serif;padding:7px 10px;border-radius:5px;background:{{ gestionBg }};color:{{ gestionFg }}">Gestionnaire</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:1;overflow:auto;padding:0 0 16px">
+
+            <sc-if value="{{ isAccueil }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:22px 20px 8px">
+                <h1 style="margin:0;font:600 26px/1.15 'IBM Plex Sans',sans-serif;color:#121820">{{ greeting }}</h1>
+                <p style="margin:8px 0 0;font:400 15px/1.5 'IBM Plex Sans',sans-serif;color:#5B6660">{{ intro }}</p>
+              </div>
+
+              <div style="padding:14px 20px 0">
+                <div style="background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:16px 18px">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+                    <span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#121820">Santé de l'entreprise</span>
+                    <span style="font:600 22px 'IBM Plex Mono',monospace;color:#121820">78<span style="font-size:13px;color:#5B6660"> / 100</span></span>
+                  </div>
+                  <div style="position:relative;height:8px;background:#DCE0DD;border-radius:4px">
+                    <div style="position:absolute;inset:0 auto 0 0;width:78%;background:#1B6E62;border-radius:4px"></div>
+                    <div style="position:absolute;left:25%;top:-2px;width:1px;height:12px;background:#F1F3F1"></div>
+                    <div style="position:absolute;left:50%;top:-2px;width:1px;height:12px;background:#F1F3F1"></div>
+                    <div style="position:absolute;left:75%;top:-2px;width:1px;height:12px;background:#F1F3F1"></div>
+                  </div>
+                  <div style="display:flex;align-items:flex-end;gap:3px;height:44px;margin-top:16px">
+                    <sc-for list="{{ santeSerie }}" as="b" hint-placeholder-count="12">
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+                        <div style="height:{{ b.h }};background:{{ b.color }};border-radius:1px"></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;margin-top:6px;font:400 10px 'IBM Plex Mono',monospace;color:#5B6660;letter-spacing:.04em">
+                    <span>12 SEM.</span><span>19 AOÛT</span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid #EDEFEC">
+                    <span style="font:400 12px 'IBM Plex Mono',monospace;color:#A23B2E">−3 pts sur 30 jours</span>
+                    <button type="button" onClick="{{ goKpi }}" style="min-height:44px;border:0;background:none;cursor:pointer;font:500 13px 'IBM Plex Sans',sans-serif;color:#1B6E62;padding:0">Les 9 dimensions →</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:24px 20px 0">
+                <div style="font: 600 11px 'IBM Plex Sans',sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #E99C40; margin-bottom: 10px">{{ sectionOneLabel }}</div>
+                <sc-for list="{{ accueilCards }}" as="c" hint-placeholder-count="3">
+                  <div style="background:#fff;border:1px solid #DCE0DD;border-left:4px solid {{ c.color }};border-radius:6px;padding:14px 16px;margin-bottom:10px">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                      <span style="width:8px;height:8px;border-radius:2px;background:{{ c.color }};flex-shrink:0"></span>
+                      <span style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:{{ c.color }}">{{ c.level }}</span>
+                    </div>
+                    <div style="font:500 15px/1.4 'IBM Plex Sans',sans-serif;color:#121820">{{ c.title }}</div>
+                    <div style="font:400 13px/1.5 'IBM Plex Sans',sans-serif;color:#5B6660;margin-top:5px">{{ c.body }}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:11px">
+                      <span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">{{ c.trust }}</span>
+                      <button type="button" onClick="{{ c.open }}" style="min-height:44px;border:0;background:none;cursor:pointer;font:500 13px 'IBM Plex Sans',sans-serif;color:#1B6E62;padding:0">{{ c.cta }}</button>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="padding:16px 20px 0">
+                <div style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660;margin-bottom:10px">Vos 3 priorités</div>
+                <div style="background:#fff;border:1px solid #DCE0DD;border-radius:6px;overflow:hidden">
+                  <sc-for list="{{ priorites }}" as="p" hint-placeholder-count="3">
+                    <button type="button" onClick="{{ p.open }}" style="width:100%;text-align:left;display:flex;gap:12px;align-items:center;min-height:56px;padding:12px 16px;background:#fff;border:0;border-top:1px solid #EDEFEC;cursor:pointer">
+                      <span style="font:600 13px 'IBM Plex Mono',monospace;color:#1B6E62;flex-shrink:0">{{ p.n }}</span>
+                      <span style="flex:1;font:400 14px/1.4 'IBM Plex Sans',sans-serif;color:#121820">{{ p.text }}</span>
+                      <span style="font:400 15px 'IBM Plex Sans',sans-serif;color:#5B6660">→</span>
+                    </button>
+                  </sc-for>
+                </div>
+                <p style="margin:16px 2px 0;font:400 13px/1.5 'IBM Plex Sans',sans-serif;color:#5B6660">Aucune autre intervention importante n'est nécessaire aujourd'hui.</p>
+                <button type="button" onClick="{{ goRapport }}" style="margin-top:14px;width:100%;min-height:48px;border:1px solid #DCE0DD;background:#fff;border-radius:6px;cursor:pointer;font:500 14px 'IBM Plex Sans',sans-serif;color:#121820">Lire le rapport du 19 août</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isAlertes }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:22px 20px 4px">
+                <h1 style="margin:0;font:600 24px 'IBM Plex Sans',sans-serif;color:#121820">Alertes</h1>
+                <p style="margin:6px 0 0;font:400 13px 'IBM Plex Sans',sans-serif;color:#5B6660"><span style="font-family:'IBM Plex Mono',monospace">7</span> actives, groupées par niveau</p>
+              </div>
+              <sc-for list="{{ alertGroups }}" as="g" hint-placeholder-count="3">
+                <div style="padding:20px 20px 0">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px">
+                    <span style="width:8px;height:8px;border-radius:2px;background:{{ g.color }};flex-shrink:0"></span>
+                    <span style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:{{ g.color }}">{{ g.label }}</span>
+                    <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5B6660">{{ g.count }}</span>
+                  </div>
+                  <sc-for list="{{ g.items }}" as="a" hint-placeholder-count="2">
+                    <button type="button" onClick="{{ a.open }}" style="display:block;width:100%;text-align:left;background:#fff;border:1px solid #DCE0DD;border-left:4px solid {{ g.color }};border-radius:6px;padding:14px 16px;margin-bottom:8px;cursor:pointer">
+                      <div style="font:500 15px/1.4 'IBM Plex Sans',sans-serif;color:#121820">{{ a.title }}</div>
+                      <div style="font:400 13px/1.5 'IBM Plex Sans',sans-serif;color:#5B6660;margin-top:4px">{{ a.body }}</div>
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
+                        <span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">{{ a.trust }}</span>
+                        <span style="font:400 12px 'IBM Plex Mono',monospace;color:#5B6660">{{ a.when }}</span>
+                      </div>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </sc-if>
+
+            <sc-if value="{{ isReco }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:16px 20px 0">
+                <button type="button" onClick="{{ goAlertes }}" style="min-height:44px;border:0;background:none;padding:0;cursor:pointer;font:500 13px 'IBM Plex Sans',sans-serif;color:#1B6E62">← Alertes</button>
+              </div>
+              <div style="padding:4px 20px 0">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+                  <span style="width:8px;height:8px;border-radius:2px;background:#A23B2E"></span>
+                  <span style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#A23B2E">Critique</span>
+                </div>
+                <h1 style="margin:0;font:600 23px/1.25 'IBM Plex Sans',sans-serif;color:#121820">La marge brute baisse depuis trois semaines</h1>
+              </div>
+              <div style="padding:18px 20px 0">
+                <sc-for list="{{ recoBlocks }}" as="b" hint-placeholder-count="4">
+                  <div style="background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:15px 17px;margin-bottom:9px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px">
+                      <span style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660">{{ b.label }}</span>
+                      <span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">{{ b.trust }}</span>
+                    </div>
+                    <div style="font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#121820">{{ b.text }}</div>
+                  </div>
+                </sc-for>
+                <div style="background:#fff;border:1px solid #DCE0DD;border-left:4px solid #A23B2E;border-radius:6px;padding:15px 17px">
+                  <div style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660;margin-bottom:10px">Priorité</div>
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">
+                    <span style="font:500 14px 'IBM Plex Sans',sans-serif;color:#121820">Urgente</span>
+                    <span style="font:600 16px 'IBM Plex Mono',monospace;color:#121820">82 / 100</span>
+                  </div>
+                  <div style="position:relative;height:6px;background:#DCE0DD;border-radius:3px">
+                    <div style="position:absolute;inset:0 auto 0 0;width:82%;background:#A23B2E;border-radius:3px"></div>
+                    <div style="position:absolute;left:25%;top:-2px;width:1px;height:10px;background:#fff"></div>
+                    <div style="position:absolute;left:50%;top:-2px;width:1px;height:10px;background:#fff"></div>
+                    <div style="position:absolute;left:75%;top:-2px;width:1px;height:10px;background:#fff"></div>
+                  </div>
+                  <div style="display:flex;gap:14px;margin-top:12px;font:400 12px 'IBM Plex Mono',monospace;color:#5B6660">
+                    <span>Probabilité 78 %</span><span>Impact élevé</span>
+                  </div>
+                </div>
+                <button type="button" onClick="{{ createTask }}" style="margin-top:14px;width:100%;min-height:52px;border:0;border-radius:6px;background:#1B6E62;color:#fff;cursor:pointer;font:600 15px 'IBM Plex Sans',sans-serif">{{ createTaskLabel }}</button>
+                <button type="button" onClick="{{ goAssistant }}" style="margin-top:9px;width:100%;min-height:48px;border:1px solid #DCE0DD;background:#fff;border-radius:6px;cursor:pointer;font:500 14px 'IBM Plex Sans',sans-serif;color:#121820">Demander à l'assistant</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isTaches }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:22px 20px 4px">
+                <h1 style="margin:0;font:600 24px 'IBM Plex Sans',sans-serif;color:#121820">Tâches</h1>
+                <p style="margin:6px 0 0;font:400 13px 'IBM Plex Sans',sans-serif;color:#5B6660">{{ tasksSummary }}</p>
+              </div>
+              <div style="display:flex;gap:7px;overflow:auto;padding:16px 20px 4px">
+                <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+                  <span style="flex-shrink:0;font:500 12px 'IBM Plex Sans',sans-serif;color:{{ f.fg }};background:{{ f.bg }};border:1px solid #DCE0DD;border-radius:20px;padding:8px 13px">{{ f.label }}</span>
+                </sc-for>
+              </div>
+              <div style="padding:12px 20px 0">
+                <sc-for list="{{ taches }}" as="t" hint-placeholder-count="4">
+                  <div style="background:#fff;border:1px solid #DCE0DD;border-left:4px solid {{ t.color }};border-radius:6px;padding:13px 15px;margin-bottom:9px;display:flex;gap:12px;align-items:flex-start">
+                    <button type="button" onClick="{{ t.toggle }}" style="flex-shrink:0;width:44px;height:44px;margin:-8px 0 -8px -8px;border:0;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                      <span style="width:20px;height:20px;border-radius:4px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};color:#fff;font:600 12px 'IBM Plex Sans',sans-serif;display:flex;align-items:center;justify-content:center">{{ t.check }}</span>
+                    </button>
+                    <div style="flex:1;min-width:0">
+                      <div style="font:500 14px/1.4 'IBM Plex Sans',sans-serif;color:{{ t.titleColor }};text-decoration:{{ t.strike }}">{{ t.title }}</div>
+                      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:7px;font:400 12px 'IBM Plex Mono',monospace;color:#5B6660">
+                        <span>{{ t.who }}</span><span>{{ t.due }}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+                        <span style="width:8px;height:8px;border-radius:2px;background:{{ t.color }}"></span>
+                        <span style="font:600 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:{{ t.color }}">{{ t.priority }}</span>
+                        <span style="font:400 11px 'IBM Plex Sans',sans-serif;color:#5B6660">· {{ t.cat }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isKpi }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:16px 20px 0">
+                <button type="button" onClick="{{ goAccueil }}" style="min-height:44px;border:0;background:none;padding:0;cursor:pointer;font:500 13px 'IBM Plex Sans',sans-serif;color:#1B6E62">← Accueil</button>
+              </div>
+              <div style="padding:4px 20px 0">
+                <h1 style="margin:0;font:600 24px 'IBM Plex Sans',sans-serif;color:#121820">Finance</h1>
+                <p style="margin:6px 0 0;font:400 13px 'IBM Plex Sans',sans-serif;color:#5B6660">Août 2026 · comparé aux 3 mois précédents</p>
+              </div>
+              <div style="padding:18px 20px 0">
+                <div style="background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:16px 18px">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between">
+                    <span style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660">Marge brute · 12 semaines</span>
+                    <span style="font:600 16px 'IBM Plex Mono',monospace;color:#121820">31,2 %</span>
+                  </div>
+                  <div style="position:relative;height:104px;margin-top:16px">
+                    <div style="position:absolute;left:0;right:0;top:30%;border-top:1px dashed #A6650A"></div>
+                    <div style="position:absolute;right:0;top:30%;transform:translateY(-100%);font:400 10px 'IBM Plex Mono',monospace;color:#A6650A;padding-bottom:3px">CIBLE 35 %</div>
+                    <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:4px">
+                      <sc-for list="{{ margeSerie }}" as="b" hint-placeholder-count="12">
+                        <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+                          <div style="height:{{ b.h }};background:{{ b.color }};border-radius:1px 1px 0 0"></div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #EDEFEC;font:400 10px 'IBM Plex Mono',monospace;color:#5B6660;letter-spacing:.04em">
+                    <span>2 JUIN</span><span>28 JUIL. — BOISCLAIR +9 %</span><span>19 AOÛT</span>
+                  </div>
+                </div>
+              </div>
+              <div style="padding:14px 20px 0">
+                <div style="background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:16px 18px">
+                  <div style="display:flex;gap:18px;flex-wrap:wrap">
+                    <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                      <div style="display:flex;flex-direction:column;gap:4px;min-width:44%">
+                        <span style="font:400 12px 'IBM Plex Sans',sans-serif;color:#5B6660">{{ k.label }}</span>
+                        <span style="font:600 20px 'IBM Plex Mono',monospace;color:#121820">{{ k.value }}</span>
+                        <span style="font:400 12px 'IBM Plex Mono',monospace;color:{{ k.deltaColor }}">{{ k.delta }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+              <div style="padding:14px 20px 0">
+                <div style="background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:16px 18px">
+                  <div style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660;margin-bottom:12px">Lecture causale</div>
+                  <sc-for list="{{ causal }}" as="c" hint-placeholder-count="4">
+                    <div style="padding-bottom:13px;margin-bottom:13px;border-bottom:1px solid #EDEFEC">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px">
+                        <span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#121820">{{ c.q }}</span>
+                        <span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">{{ c.trust }}</span>
+                      </div>
+                      <div style="font:400 14px/1.5 'IBM Plex Sans',sans-serif;color:#5B6660">{{ c.a }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:14px 20px 0">
+                <div style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660;margin-bottom:10px">Les 9 dimensions</div>
+                <div style="background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:15px">
+                  <sc-for list="{{ dimensions }}" as="d" hint-placeholder-count="9">
+                    <div>
+                      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                        <span style="font:400 13px 'IBM Plex Sans',sans-serif;color:#121820">{{ d.name }}</span>
+                        <span style="font:600 13px 'IBM Plex Mono',monospace;color:#121820">{{ d.score }}</span>
+                      </div>
+                      <div style="position:relative;height:6px;background:#DCE0DD;border-radius:3px">
+                        <div style="position:absolute;inset:0 auto 0 0;width:{{ d.pct }};background:{{ d.color }};border-radius:3px"></div>
+                        <div style="position:absolute;left:25%;top:-2px;width:1px;height:10px;background:#F1F3F1"></div>
+                        <div style="position:absolute;left:50%;top:-2px;width:1px;height:10px;background:#F1F3F1"></div>
+                        <div style="position:absolute;left:75%;top:-2px;width:1px;height:10px;background:#F1F3F1"></div>
+                      </div>
+                      <div style="display:flex;gap:12px;margin-top:6px;font:400 11px 'IBM Plex Mono',monospace;color:#5B6660">
+                        <span style="color:{{ d.trendColor }}">{{ d.arrow }} {{ d.trend }}</span><span>confiance {{ d.conf }}</span>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isRapport }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:16px 20px 0">
+                <button type="button" onClick="{{ goAccueil }}" style="min-height:44px;border:0;background:none;padding:0;cursor:pointer;font:500 13px 'IBM Plex Sans',sans-serif;color:#1B6E62">← Accueil</button>
+              </div>
+              <div style="padding:4px 20px 0">
+                <h1 style="margin:0;font:600 24px 'IBM Plex Sans',sans-serif;color:#121820">Rapport quotidien</h1>
+                <p style="margin:6px 0 0;font:400 13px 'IBM Plex Mono',monospace;color:#5B6660">Mercredi 19 août 2026 · généré à 6 h 10</p>
+              </div>
+              <div style="padding:18px 20px 0">
+                <sc-for list="{{ rapport }}" as="s" hint-placeholder-count="5">
+                  <div style="margin-bottom:10px;background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:15px 17px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px">
+                      <span style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660">{{ s.label }}</span>
+                      <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5B6660">{{ s.meta }}</span>
+                    </div>
+                    <div style="font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#121820">{{ s.text }}</div>
+                    <sc-if value="{{ s.trust }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin-top:10px"><span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">{{ s.trust }}</span></div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isAssistant }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:22px 20px 4px">
+                <h1 style="margin:0;font:600 24px 'IBM Plex Sans',sans-serif;color:#121820">Assistant</h1>
+                <p style="margin:6px 0 0;font:400 13px 'IBM Plex Sans',sans-serif;color:#5B6660">Répond à partir de vos données seulement</p>
+              </div>
+              <div style="padding:18px 20px 0;display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ messages }}" as="m" hint-placeholder-count="4">
+                  <div style="align-self:{{ m.align }};max-width:88%;background:{{ m.bg }};color:{{ m.fg }};border:1px solid {{ m.border }};border-radius:6px;padding:13px 15px">
+                    <div style="font:400 14px/1.55 'IBM Plex Sans',sans-serif">{{ m.text }}</div>
+                    <sc-if value="{{ m.trust }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:11px">
+                        <span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">{{ m.trust }}</span>
+                        <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5B6660">{{ m.sources }}</span>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:18px 20px 0;display:flex;flex-wrap:wrap;gap:8px">
+                <sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="3">
+                  <button type="button" onClick="{{ s.ask }}" style="min-height:44px;background:#fff;border:1px solid #DCE0DD;border-radius:20px;padding:10px 14px;cursor:pointer;font:400 13px 'IBM Plex Sans',sans-serif;color:#121820">{{ s.text }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+
+          </div>
+
+          <div style="flex-shrink:0;background:#fff;border-top:1px solid #DCE0DD;padding:8px 8px 30px;display:flex">
+            <button type="button" onClick="{{ goAccueil }}" style="flex:1;min-height:48px;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ tabAccueil }}">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="{{ tabAccueil }}" stroke-width="1.6" stroke-linecap="round"><path d="M3 5h14M3 10h9M3 15h11"></path><circle cx="15.5" cy="10" r="1.6" fill="{{ tabAccueil }}" stroke="none"></circle></svg>Accueil
+            </button>
+            <button type="button" onClick="{{ goAlertes }}" style="flex:1;min-height:48px;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ tabAlertes }}">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="{{ tabAlertes }}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 17.5 16.5H2.5z"></path><path d="M10 8v3.4"></path><circle cx="10" cy="14" r="0.9" fill="{{ tabAlertes }}" stroke="none"></circle></svg>Alertes
+            </button>
+            <button type="button" onClick="{{ goTaches }}" style="flex:1;min-height:48px;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ tabTaches }}">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="{{ tabTaches }}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3.5" width="14" height="13" rx="2.5"></rect><path d="M6.5 10.2 9 12.6l4.5-4.8"></path></svg>Tâches
+            </button>
+            <button type="button" onClick="{{ goAssistant }}" style="flex:1;min-height:48px;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:{{ tabAssistant }}">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="{{ tabAssistant }}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 10.5c0 3.3-3.1 5.9-7 5.9-.9 0-1.7-.1-2.5-.4L4 17.2l1-2.7C3.7 13.4 3 12 3 10.5 3 7.2 6.1 4.6 10 4.6s7 2.6 7 5.9z"></path><path d="M7.5 10.5h5"></path></svg>Assistant
+            </button>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="max-width:300px;background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:18px 20px">
+      <div style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660;margin-bottom:12px">Ce qui est cliquable</div>
+      <ul style="margin:0;padding-left:18px;font:400 13px/1.7 'IBM Plex Sans',sans-serif;color:#121820">
+        <li>Sélecteur de profil en tête (l'accueil change)</li>
+        <li>Les 4 onglets du bas</li>
+        <li>« Les 9 dimensions » → KPI Finance</li>
+        <li>Une carte d'alerte → fiche recommandation</li>
+        <li>« Créer la tâche » → ajoutée aux tâches</li>
+        <li>Cases à cocher des tâches</li>
+        <li>Questions suggérées de l'assistant</li>
+      </ul>
+      <div style="height:1px;background:#EDEFEC;margin:16px 0"></div>
+      <div style="font:400 12px/1.6 'IBM Plex Sans',sans-serif;color:#5B6660">Le PRD place l'app mobile native hors périmètre MVP (section 50). Ceci suppose un compagnon mobile de la version web, pas un produit distinct.</div>
+    </div>
+  </div>
+
+  <p style="margin:24px 0 0;font:400 12px 'IBM Plex Sans',sans-serif;color:#5B6660">Essayer ensuite : « garde <a href="#2a" style="font:600 11px 'IBM Plex Mono',monospace;text-decoration:none;background:rgba(0,0,0,.07);color:#121820;padding:2px 6px;border-radius:4px">2a</a> mais avec la file à traiter de <a href="#1b" style="font:600 11px 'IBM Plex Mono',monospace;text-decoration:none;background:rgba(0,0,0,.07);color:#121820;padding:2px 6px;border-radius:4px">1b</a> » · « ajoute l'écran d'import et la capture de facture » · « densifie l'accueil comme <a href="#1c" style="font:600 11px 'IBM Plex Mono',monospace;text-decoration:none;background:rgba(0,0,0,.07);color:#121820;padding:2px 6px;border-radius:4px">1c</a> »</p>
+</section>
+
+<section style="padding:44px 48px 40px" id="t1">
+  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">
+    <a href="#t1" style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#121820;color:#fff;border-radius:4px;text-decoration:none">1</a>
+    <span style="font:600 13px 'IBM Plex Sans',sans-serif;color:#121820">Quatre directions pour l'accueil</span>
+  </div>
+  <p style="margin:0 0 26px;max-width:660px;font:400 13px/1.6 'IBM Plex Sans',sans-serif;color:#5B6660">Même palette, même typographie, mêmes composants — ce qui varie est la structure : ce qu'on voit en premier, comment on navigue, combien d'information tient dans un écran.</p>
+
+  <div style="display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start">
+
+    <div style="display:flex;flex-direction:column;gap:9px;max-width:402px" id="1a">
+      <div style="display:flex;align-items:baseline;gap:8px;font:400 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><a href="#1a" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#121820;border-radius:5px;text-decoration:none">1a</a>Flux du jour · onglets bas · minimal</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+        <div style="height:100%;background:#F1F3F1;font-family:'IBM Plex Sans',sans-serif;display:flex;flex-direction:column">
+          <div style="flex:1;overflow:hidden;padding:66px 20px 0">
+            <div style="font:400 11px 'IBM Plex Mono',monospace;color:#5B6660;letter-spacing:.04em">MER. 19 AOÛT · ATELIER BERTIN</div>
+            <h1 style="margin:12px 0 0;font:600 27px/1.15 'IBM Plex Sans',sans-serif;color:#121820">Bonjour, Issa.</h1>
+            <p style="margin:8px 0 0;font:400 15px/1.5 'IBM Plex Sans',sans-serif;color:#5B6660">Une chose demande une décision aujourd'hui.</p>
+            <div style="margin-top:20px;background:#fff;border:1px solid #DCE0DD;border-left:4px solid #A23B2E;border-radius:6px;padding:15px 17px">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                <span style="width:8px;height:8px;border-radius:2px;background:#A23B2E"></span>
+                <span style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#A23B2E">Critique</span>
+              </div>
+              <div style="font:500 16px/1.4 'IBM Plex Sans',sans-serif;color:#121820">Votre marge baisse depuis trois semaines</div>
+              <div style="font:400 13px/1.5 'IBM Plex Sans',sans-serif;color:#5B6660;margin-top:6px">31,2 % ce mois, contre 35,3 % en juillet. Cause probable : le contreplaqué de Boisclair a monté de 9 %.</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+                <span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">Analyse</span>
+                <span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#1B6E62">Ouvrir →</span>
+              </div>
+            </div>
+            <div style="margin-top:22px;font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660">Vos 3 priorités</div>
+            <div style="margin-top:10px;background:#fff;border:1px solid #DCE0DD;border-radius:6px">
+              <div style="display:flex;gap:12px;align-items:center;padding:14px 16px"><span style="font:600 13px 'IBM Plex Mono',monospace;color:#1B6E62">1</span><span style="flex:1;font:400 14px 'IBM Plex Sans',sans-serif;color:#121820">Vérifier les prix de Boisclair</span><span style="color:#5B6660">→</span></div>
+              <div style="display:flex;gap:12px;align-items:center;padding:14px 16px;border-top:1px solid #EDEFEC"><span style="font:600 13px 'IBM Plex Mono',monospace;color:#1B6E62">2</span><span style="flex:1;font:400 14px 'IBM Plex Sans',sans-serif;color:#121820">Analyser le prix du comptoir Nordik</span><span style="color:#5B6660">→</span></div>
+              <div style="display:flex;gap:12px;align-items:center;padding:14px 16px;border-top:1px solid #EDEFEC"><span style="font:600 13px 'IBM Plex Mono',monospace;color:#1B6E62">3</span><span style="flex:1;font:400 14px 'IBM Plex Sans',sans-serif;color:#121820">Examiner le programme ESSOR</span><span style="color:#5B6660">→</span></div>
+            </div>
+            <div style="margin-top:20px;background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:15px 17px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+                <span style="font:500 13px 'IBM Plex Sans',sans-serif;color:#121820">Santé de l'entreprise</span>
+                <span style="font:600 20px 'IBM Plex Mono',monospace;color:#121820">78<span style="font-size:12px;color:#5B6660"> / 100</span></span>
+              </div>
+              <div style="position:relative;height:8px;background:#DCE0DD;border-radius:4px">
+                <div style="position:absolute;inset:0 auto 0 0;width:78%;background:#1B6E62;border-radius:4px"></div>
+                <div style="position:absolute;left:25%;top:-2px;width:1px;height:12px;background:#fff"></div>
+                <div style="position:absolute;left:50%;top:-2px;width:1px;height:12px;background:#fff"></div>
+                <div style="position:absolute;left:75%;top:-2px;width:1px;height:12px;background:#fff"></div>
+              </div>
+            </div>
+            <p style="margin:18px 2px 0;font:400 13px/1.5 'IBM Plex Sans',sans-serif;color:#5B6660">Rien d'autre ne requiert votre attention aujourd'hui.</p>
+          </div>
+          <div style="flex-shrink:0;background:#fff;border-top:1px solid #DCE0DD;padding:8px 8px 30px;display:flex">
+            <div style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:#1B6E62"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#1B6E62" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14M3 10h9M3 15h11"></path><circle cx="15.5" cy="10" r="1.6" fill="#1B6E62" stroke="none"></circle></svg>Accueil</div>
+            <div style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5B6660" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 17.5 16.5H2.5z"></path><path d="M10 8v3.4"></path><circle cx="10" cy="14" r="0.9" fill="#5B6660" stroke="none"></circle></svg>Alertes</div>
+            <div style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5B6660" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3.5" width="14" height="13" rx="2.5"></rect><path d="M6.5 10.2 9 12.6l4.5-4.8"></path></svg>Tâches</div>
+            <div style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5B6660" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 10.5c0 3.3-3.1 5.9-7 5.9-.9 0-1.7-.1-2.5-.4L4 17.2l1-2.7C3.7 13.4 3 12 3 10.5 3 7.2 6.1 4.6 10 4.6s7 2.6 7 5.9z"></path><path d="M7.5 10.5h5"></path></svg>Assistant</div>
+          </div>
+        </div>
+      </x-import>
+      <p style="margin:4px 2px 0;max-width:380px;font:400 12px/1.6 'IBM Plex Sans',sans-serif;color:#5B6660">La lecture du PRD prise au mot : une idée dominante, trois priorités, le score en bas. Le plus sûr, le moins surprenant.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:9px;max-width:402px" id="1b">
+      <div style="display:flex;align-items:baseline;gap:8px;font:400 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><a href="#1b" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#121820;border-radius:5px;text-decoration:none">1b</a>File à traiter · une décision à la fois</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+        <div style="height:100%;background:#121820;font-family:'IBM Plex Sans',sans-serif;display:flex;flex-direction:column">
+          <div style="flex-shrink:0;padding:64px 20px 0;color:#fff">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font:400 11px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.55);letter-spacing:.04em">À TRAITER</div>
+              <div style="font:600 13px 'IBM Plex Mono',monospace;color:#fff">1 / 4</div>
+            </div>
+            <div style="display:flex;gap:4px;margin-top:12px">
+              <div style="flex:1;height:3px;background:#fff;border-radius:2px"></div>
+              <div style="flex:1;height:3px;background:rgba(255,255,255,.22);border-radius:2px"></div>
+              <div style="flex:1;height:3px;background:rgba(255,255,255,.22);border-radius:2px"></div>
+              <div style="flex:1;height:3px;background:rgba(255,255,255,.22);border-radius:2px"></div>
+            </div>
+          </div>
+          <div style="flex:1;padding:22px 20px 0;overflow:hidden">
+            <div style="background:#fff;border-radius:6px;border-left:4px solid #A23B2E;padding:20px 20px 22px;height:100%;box-sizing:border-box">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:2px;background:#A23B2E"></span>
+                <span style="font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#A23B2E">Critique</span>
+              </div>
+              <h1 style="margin:14px 0 0;font:600 24px/1.25 'IBM Plex Sans',sans-serif;color:#121820">La marge brute a perdu 4,1 points en trois semaines</h1>
+              <div style="margin-top:20px;display:flex;flex-direction:column;gap:16px">
+                <div>
+                  <div style="font:600 10px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660">Ce qui est mesuré</div>
+                  <div style="margin-top:6px;font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#121820">Marge brute 31,2 % en août contre 35,3 % en juillet, sur un chiffre d'affaires en hausse de 12 %.</div>
+                  <div style="margin-top:8px"><span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">Fait</span></div>
+                </div>
+                <div>
+                  <div style="font:600 10px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660">Cause probable</div>
+                  <div style="margin-top:6px;font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#121820">Le contreplaqué de Boisclair est passé de 62 $ à 68 $ la feuille le 28 juillet, sans révision de vos prix de vente.</div>
+                  <div style="margin-top:8px"><span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">Analyse</span></div>
+                </div>
+                <div>
+                  <div style="font:600 10px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660">Si rien ne change</div>
+                  <div style="margin-top:6px;font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#121820">Environ 2 400 $ de marge perdue par mois au volume actuel.</div>
+                  <div style="margin-top:8px"><span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">Prévision</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="flex-shrink:0;padding:16px 20px 34px;display:flex;flex-direction:column;gap:9px">
+            <button type="button" style="min-height:52px;border:0;border-radius:6px;background:#1B6E62;color:#fff;font:600 15px 'IBM Plex Sans',sans-serif">Créer la tâche « Vérifier Boisclair »</button>
+            <div style="display:flex;gap:9px">
+              <button type="button" style="flex:1;min-height:48px;border:1px solid rgba(255,255,255,.25);background:none;border-radius:6px;color:#fff;font:500 14px 'IBM Plex Sans',sans-serif">Plus tard</button>
+              <button type="button" style="flex:1;min-height:48px;border:1px solid rgba(255,255,255,.25);background:none;border-radius:6px;color:#fff;font:500 14px 'IBM Plex Sans',sans-serif">Écarter</button>
+            </div>
+          </div>
+        </div>
+      </x-import>
+      <p style="margin:4px 2px 0;max-width:380px;font:400 12px/1.6 'IBM Plex Sans',sans-serif;color:#5B6660">L'accueil est une file, pas un tableau. Fond encre pour marquer le mode « décision ». Convient à 2 minutes le matin ; suppose que rien d'important ne se consulte sans être traité.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:9px;max-width:402px" id="1c">
+      <div style="display:flex;align-items:baseline;gap:8px;font:400 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><a href="#1c" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#121820;border-radius:5px;text-decoration:none">1c</a>Instrument de bord · dense</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+        <div style="height:100%;background:#F1F3F1;font-family:'IBM Plex Sans',sans-serif;display:flex;flex-direction:column">
+          <div style="flex-shrink:0;background:#121820;color:#fff;padding:60px 20px 18px">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between">
+              <div>
+                <div style="font:400 10px 'IBM Plex Mono',monospace;color:rgba(255,255,255,.5);letter-spacing:.1em">SANTÉ GLOBALE</div>
+                <div style="font:600 42px/1 'IBM Plex Mono',monospace;margin-top:6px">78<span style="font-size:16px;color:rgba(255,255,255,.5)"> / 100</span></div>
+              </div>
+              <div style="text-align:right;font:400 11px/1.5 'IBM Plex Mono',monospace;color:rgba(255,255,255,.6)">−3 pts / 30 j<br>confiance élevée</div>
+            </div>
+            <div style="position:relative;height:8px;background:rgba(255,255,255,.18);border-radius:4px;margin-top:14px">
+              <div style="position:absolute;inset:0 auto 0 0;width:78%;background:#fff;border-radius:4px"></div>
+              <div style="position:absolute;left:25%;top:-2px;width:1px;height:12px;background:#121820"></div>
+              <div style="position:absolute;left:50%;top:-2px;width:1px;height:12px;background:#121820"></div>
+              <div style="position:absolute;left:75%;top:-2px;width:1px;height:12px;background:#121820"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px 14px;margin-top:20px">
+              <div><div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.7)"><span>Finance</span><span style="font-family:'IBM Plex Mono',monospace">71</span></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:4px"><div style="width:71%;height:3px;background:#A6650A;border-radius:2px"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.7)"><span>Ventes</span><span style="font-family:'IBM Plex Mono',monospace">84</span></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:4px"><div style="width:84%;height:3px;background:#2E7D4F;border-radius:2px"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.7)"><span>Trésorerie</span><span style="font-family:'IBM Plex Mono',monospace">62</span></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:4px"><div style="width:62%;height:3px;background:#A23B2E;border-radius:2px"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.7)"><span>Clients</span><span style="font-family:'IBM Plex Mono',monospace">80</span></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:4px"><div style="width:80%;height:3px;background:#2E7D4F;border-radius:2px"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.7)"><span>Opérations</span><span style="font-family:'IBM Plex Mono',monospace">76</span></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:4px"><div style="width:76%;height:3px;background:#8C7A2A;border-radius:2px"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.7)"><span>Marketing</span><span style="font-family:'IBM Plex Mono',monospace">58</span></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:4px"><div style="width:58%;height:3px;background:#A23B2E;border-radius:2px"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.7)"><span>Productivité</span><span style="font-family:'IBM Plex Mono',monospace">82</span></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:4px"><div style="width:82%;height:3px;background:#2E7D4F;border-radius:2px"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.7)"><span>Risques</span><span style="font-family:'IBM Plex Mono',monospace">65</span></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:4px"><div style="width:65%;height:3px;background:#A6650A;border-radius:2px"></div></div></div>
+              <div><div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Sans',sans-serif;color:rgba(255,255,255,.7)"><span>Croissance</span><span style="font-family:'IBM Plex Mono',monospace">74</span></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:4px"><div style="width:74%;height:3px;background:#8C7A2A;border-radius:2px"></div></div></div>
+            </div>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:16px 20px 0">
+            <div style="display:flex;gap:10px">
+              <div style="flex:1;background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:12px 14px">
+                <div style="font:400 11px 'IBM Plex Sans',sans-serif;color:#5B6660">Marge brute</div>
+                <div style="font:600 19px 'IBM Plex Mono',monospace;color:#121820;margin-top:3px">31,2 %</div>
+                <div style="font:400 11px 'IBM Plex Mono',monospace;color:#A23B2E;margin-top:2px">−4,1 pts</div>
+              </div>
+              <div style="flex:1;background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:12px 14px">
+                <div style="font:400 11px 'IBM Plex Sans',sans-serif;color:#5B6660">Trésorerie</div>
+                <div style="font:600 19px 'IBM Plex Mono',monospace;color:#121820;margin-top:3px">41 200 $</div>
+                <div style="font:400 11px 'IBM Plex Mono',monospace;color:#5B6660;margin-top:2px">32 jours</div>
+              </div>
+            </div>
+            <div style="margin-top:16px;font:600 11px 'IBM Plex Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5B6660">Signaux du jour</div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+              <div style="background:#fff;border:1px solid #DCE0DD;border-left:4px solid #A23B2E;border-radius:6px;padding:12px 14px">
+                <div style="font:500 14px/1.4 'IBM Plex Sans',sans-serif;color:#121820">Marge en baisse depuis 3 semaines</div>
+                <div style="font:400 12px 'IBM Plex Mono',monospace;color:#5B6660;margin-top:4px">Boisclair +9 % · 2 400 $/mois</div>
+              </div>
+              <div style="background:#fff;border:1px solid #DCE0DD;border-left:4px solid #A6650A;border-radius:6px;padding:12px 14px">
+                <div style="font:500 14px/1.4 'IBM Plex Sans',sans-serif;color:#121820">Ébénisterie Marchand baisse ses prix de comptoirs</div>
+                <div style="font:400 12px 'IBM Plex Mono',monospace;color:#5B6660;margin-top:4px">−7 % · relevé du 17 août</div>
+              </div>
+              <div style="background:#fff;border:1px solid #DCE0DD;border-left:4px solid #2E7D4F;border-radius:6px;padding:12px 14px">
+                <div style="font:500 14px/1.4 'IBM Plex Sans',sans-serif;color:#121820">Demande d'armoires sur mesure en hausse en Estrie</div>
+                <div style="font:400 12px 'IBM Plex Mono',monospace;color:#5B6660;margin-top:4px">recherches +24 % · 3 mois</div>
+              </div>
+            </div>
+          </div>
+          <div style="flex-shrink:0;background:#fff;border-top:1px solid #DCE0DD;padding:8px 8px 30px;display:flex">
+            <div style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:#1B6E62"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#1B6E62" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 14.5a6.5 6.5 0 0 1 13 0"></path><path d="M10 14.5 13.4 9.8"></path><circle cx="10" cy="14.5" r="1.2" fill="#1B6E62" stroke="none"></circle></svg>Bord</div>
+            <div style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5B6660" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V9M8 16V5M12 16v-5M16 16v-8"></path></svg>KPI</div>
+            <div style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5B6660" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 17.5 16.5H2.5z"></path><path d="M10 8v3.4"></path><circle cx="10" cy="14" r="0.9" fill="#5B6660" stroke="none"></circle></svg>Alertes</div>
+            <div style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5B6660" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3.5" width="14" height="13" rx="2.5"></rect><path d="M6.5 10.2 9 12.6l4.5-4.8"></path></svg>Tâches</div>
+            <div style="flex:1;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font:500 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5B6660" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 10.5c0 3.3-3.1 5.9-7 5.9-.9 0-1.7-.1-2.5-.4L4 17.2l1-2.7C3.7 13.4 3 12 3 10.5 3 7.2 6.1 4.6 10 4.6s7 2.6 7 5.9z"></path><path d="M7.5 10.5h5"></path></svg>Assistant</div>
+          </div>
+        </div>
+      </x-import>
+      <p style="margin:4px 2px 0;max-width:380px;font:400 12px/1.6 'IBM Plex Sans',sans-serif;color:#5B6660">Les neuf dimensions dès l'accueil, en micro-jauges sur bandeau encre. Contredit « pas 50 graphiques » mais parle au dirigeant qui veut voir l'état complet d'un coup d'œil. Convient mieux au gestionnaire.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:9px;max-width:402px" id="1d">
+      <div style="display:flex;align-items:baseline;gap:8px;font:400 11px 'IBM Plex Sans',sans-serif;color:#5B6660"><a href="#1d" style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#121820;border-radius:5px;text-decoration:none">1d</a>Assistant au centre · le rapport est une conversation</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+        <div style="height:100%;background:#F1F3F1;font-family:'IBM Plex Sans',sans-serif;display:flex;flex-direction:column">
+          <div style="flex-shrink:0;padding:62px 20px 12px;border-bottom:1px solid #DCE0DD;background:#F1F3F1;display:flex;align-items:center;justify-content:space-between">
+            <div style="font:600 15px 'IBM Plex Sans',sans-serif;color:#121820">Copilote</div>
+            <div style="display:flex;align-items:center;gap:7px">
+              <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5B6660">santé</span>
+              <span style="font:600 14px 'IBM Plex Mono',monospace;color:#121820">78</span>
+              <span style="width:34px;height:5px;background:#DCE0DD;border-radius:3px;display:inline-block;position:relative"><span style="position:absolute;inset:0 auto 0 0;width:78%;background:#1B6E62;border-radius:3px"></span></span>
+            </div>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:18px 20px 0;display:flex;flex-direction:column;gap:11px">
+            <div style="align-self:flex-start;max-width:90%;background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:14px 16px">
+              <div style="font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#121820">Bonjour Issa. Une chose mérite votre attention : la marge brute a perdu 4,1 points en trois semaines. Le reste est stable.</div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:11px">
+                <span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">Fait</span>
+                <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5B6660">grand livre · 1–19 août</span>
+              </div>
+            </div>
+            <div style="align-self:flex-start;max-width:90%;background:#fff;border:1px solid #DCE0DD;border-left:4px solid #A23B2E;border-radius:6px;padding:14px 16px">
+              <div style="font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#121820">La cause la plus probable est la hausse de 9 % du contreplaqué chez Boisclair, non répercutée sur vos prix.</div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:11px">
+                <span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">Hypothèse</span>
+                <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5B6660">3 factures Boisclair</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:7px;margin-top:13px">
+                <button type="button" style="min-height:44px;background:#1B6E62;border:0;border-radius:6px;color:#fff;font:600 13px 'IBM Plex Sans',sans-serif;text-align:left;padding:0 14px">Créer la tâche « Vérifier Boisclair »</button>
+                <button type="button" style="min-height:44px;background:#fff;border:1px solid #DCE0DD;border-radius:6px;color:#121820;font:500 13px 'IBM Plex Sans',sans-serif;text-align:left;padding:0 14px">Voir le détail de la marge</button>
+              </div>
+            </div>
+            <div style="align-self:flex-end;max-width:80%;background:#121820;border-radius:6px;padding:13px 15px">
+              <div style="font:400 14px/1.5 'IBM Plex Sans',sans-serif;color:#fff">Et mes deux autres risques ?</div>
+            </div>
+            <div style="align-self:flex-start;max-width:90%;background:#fff;border:1px solid #DCE0DD;border-radius:6px;padding:14px 16px">
+              <div style="font:400 14px/1.55 'IBM Plex Sans',sans-serif;color:#121820">Marchand a baissé ses prix de comptoirs de 7 %, et 18 900 $ de vos comptes clients dépassent 60 jours.</div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:11px">
+                <span style="font:500 10px 'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#5B6660;border:1px solid #DCE0DD;border-radius:3px;padding:3px 6px">Analyse</span>
+                <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5B6660">radar externe · comptes clients</span>
+              </div>
+            </div>
+          </div>
+          <div style="flex-shrink:0;padding:12px 20px 0;display:flex;gap:7px;overflow:hidden">
+            <span style="flex-shrink:0;background:#fff;border:1px solid #DCE0DD;border-radius:20px;padding:9px 13px;font:400 12px 'IBM Plex Sans',sans-serif;color:#121820">Que dois-je faire cette semaine ?</span>
+            <span style="flex-shrink:0;background:#fff;border:1px solid #DCE0DD;border-radius:20px;padding:9px 13px;font:400 12px 'IBM Plex Sans',sans-serif;color:#121820">Quel client est le plus rentable ?</span>
+          </div>
+          <div style="flex-shrink:0;padding:12px 20px 34px">
+            <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #DCE0DD;border-radius:24px;padding:0 6px 0 16px;min-height:50px">
+              <span style="flex:1;font:400 14px 'IBM Plex Sans',sans-serif;color:#5B6660">Poser une question…</span>
+              <span style="width:38px;height:38px;border-radius:19px;background:#1B6E62;color:#fff;display:flex;align-items:center;justify-content:center;font:600 15px 'IBM Plex Sans',sans-serif">↑</span>
+            </div>
+          </div>
+        </div>
+      </x-import>
+      <p style="margin:4px 2px 0;max-width:380px;font:400 12px/1.6 'IBM Plex Sans',sans-serif;color:#5B6660">Pas d'onglets : le rapport du jour arrive comme premiers messages, chaque affirmation garde son badge, les actions sont dans la bulle. Le plus risqué — tout passe par le texte — et le plus proche de la promesse « un système qui travaille pour vous ».</p>
+    </div>
+
+  </div>
+  <p style="margin:26px 0 0;font:400 12px 'IBM Plex Sans',sans-serif;color:#5B6660">Essayer ensuite : « creuse <a href="#1d" style="font:600 11px 'IBM Plex Mono',monospace;text-decoration:none;background:rgba(0,0,0,.07);color:#121820;padding:2px 6px;border-radius:4px">1d</a> sur les 7 écrans » · « croise <a href="#1a" style="font:600 11px 'IBM Plex Mono',monospace;text-decoration:none;background:rgba(0,0,0,.07);color:#121820;padding:2px 6px;border-radius:4px">1a</a> et le bandeau de <a href="#1c" style="font:600 11px 'IBM Plex Mono',monospace;text-decoration:none;background:rgba(0,0,0,.07);color:#121820;padding:2px 6px;border-radius:4px">1c</a> » · « montre l'état vide, avant tout import »</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  state = { screen: 'accueil', profile: 'proprietaire', done: {}, taskAdded: false, asked: null };
+
+  go(s) { return () => this.setState({ screen: s }); }
+
+  renderVals() {
+    const s = this.state;
+    const proprio = s.profile === 'proprietaire';
+    const tab = (n) => (s.screen === n ? '#1B6E62' : '#5B6660');
+
+    const accueilProprio = [
+      { level: 'Critique', color: '#A23B2E', title: 'Votre marge baisse depuis trois semaines',
+        body: '31,2 % en août contre 35,3 % en juillet, sur un chiffre d\u2019affaires en hausse de 12 %.',
+        trust: 'Analyse', cta: 'Ouvrir →', open: this.go('reco') },
+      { level: 'Important', color: '#A6650A', title: 'Deux risques détectés',
+        body: 'Le contreplaqué de Boisclair a monté de 9 %. Ébénisterie Marchand a baissé ses prix de comptoirs de 7 %.',
+        trust: 'Analyse', cta: 'Voir les alertes →', open: this.go('alertes') },
+      { level: 'Opportunité', color: '#2E7D4F', title: 'Deux opportunités',
+        body: 'Demande d\u2019armoires sur mesure en hausse de 24 % en Estrie. Programme ESSOR potentiellement applicable à votre plaqueuse de chants.',
+        trust: 'Hypothèse', cta: 'Voir les alertes →', open: this.go('alertes') },
+    ];
+    const accueilGestion = [
+      { level: 'Critique', color: '#A23B2E', title: '3 factures dépassent 60 jours',
+        body: '18 900 $ à relancer, dont 11 400 $ chez Cuisines Delorme.', trust: 'Fait',
+        cta: 'Ouvrir les tâches →', open: this.go('taches') },
+      { level: 'Important', color: '#A6650A', title: 'Deux tâches arrivent à échéance',
+        body: 'Soumissions fournisseurs alternatifs (25 août) et révision du prix Nordik (27 août).',
+        trust: 'Fait', cta: 'Ouvrir les tâches →', open: this.go('taches') },
+      { level: 'Surveillance', color: '#8C7A2A', title: 'Délais de production en hausse',
+        body: 'Délai moyen de livraison à 19 jours, contre 16 sur le trimestre précédent.',
+        trust: 'Analyse', cta: 'Voir les KPI →', open: this.go('kpi') },
+    ];
+
+    const prioritesProprio = [
+      { n: '1', text: 'Vérifier les prix de Boisclair', open: this.go('reco') },
+      { n: '2', text: 'Analyser le prix du comptoir Nordik', open: this.go('kpi') },
+      { n: '3', text: 'Examiner le programme ESSOR', open: this.go('alertes') },
+    ];
+    const prioritesGestion = [
+      { n: '1', text: 'Relancer les 3 factures de plus de 60 jours', open: this.go('taches') },
+      { n: '2', text: 'Obtenir 2 soumissions de contreplaqué', open: this.go('taches') },
+      { n: '3', text: 'Valider le planning de la semaine du 24', open: this.go('taches') },
+    ];
+
+    const baseTasks = [
+      { id: 't1', title: 'Relancer les 3 factures de plus de 60 jours', who: 'Issa', due: '21 août', priority: 'Urgente', cat: 'Financier', color: '#A23B2E' },
+      { id: 't2', title: 'Demander une soumission à 2 fournisseurs de contreplaqué', who: 'Marc L.', due: '25 août', priority: 'Élevée', cat: 'Opérationnel', color: '#A6650A' },
+      { id: 't3', title: 'Revoir le prix du comptoir Nordik', who: 'Issa', due: '27 août', priority: 'Élevée', cat: 'Commercial', color: '#A6650A' },
+      { id: 't4', title: 'Préparer le dossier du programme ESSOR', who: 'Julie R.', due: '5 sept.', priority: 'Moyenne', cat: 'Stratégique', color: '#8C7A2A' },
+    ];
+    if (s.taskAdded) {
+      baseTasks.unshift({ id: 't0', title: 'Vérifier les prix de Boisclair', who: 'Issa', due: '20 août', priority: 'Urgente', cat: 'Financier', color: '#A23B2E' });
+    }
+    const taches = baseTasks.map((t) => {
+      const d = !!s.done[t.id];
+      return Object.assign({}, t, {
+        check: d ? '✓' : '',
+        boxBg: d ? '#1B6E62' : '#FFFFFF',
+        boxBorder: d ? '#1B6E62' : '#DCE0DD',
+        titleColor: d ? '#5B6660' : '#121820',
+        strike: d ? 'line-through' : 'none',
+        toggle: () => this.setState((p) => ({ done: Object.assign({}, p.done, { [t.id]: !p.done[t.id] }) })),
+      });
+    });
+    const remaining = taches.filter((t) => !s.done[t.id]).length;
+
+    const messages = [
+      { role: 'sys', text: 'Bonjour Issa. Une chose mérite votre attention : la marge brute a perdu 4,1 points en trois semaines. Le reste est stable.', trust: 'Fait', sources: 'grand livre · 1–19 août' },
+    ];
+    if (s.asked) messages.push({ role: 'me', text: s.asked.q });
+    messages.push(s.asked
+      ? { role: 'sys', text: s.asked.a, trust: s.asked.trust, sources: s.asked.sources }
+      : { role: 'sys', text: 'La cause la plus probable est la hausse de 9 % du contreplaqué chez Boisclair, non répercutée sur vos prix de vente depuis le 28 juillet.', trust: 'Hypothèse', sources: '3 factures Boisclair · prix de vente' });
+
+    const ask = (q, a, trust, sources) => () => this.setState({ asked: { q, a, trust, sources } });
+
+    return {
+      isAccueil: s.screen === 'accueil', isAlertes: s.screen === 'alertes', isTaches: s.screen === 'taches',
+      isAssistant: s.screen === 'assistant', isKpi: s.screen === 'kpi', isReco: s.screen === 'reco',
+      isRapport: s.screen === 'rapport',
+      goAccueil: this.go('accueil'), goAlertes: this.go('alertes'), goTaches: this.go('taches'),
+      goAssistant: this.go('assistant'), goKpi: this.go('kpi'), goRapport: this.go('rapport'),
+      tabAccueil: tab('accueil'), tabAlertes: tab('alertes'), tabTaches: tab('taches'), tabAssistant: tab('assistant'),
+
+      setProprio: () => this.setState({ profile: 'proprietaire', screen: 'accueil' }),
+      setGestion: () => this.setState({ profile: 'gestionnaire', screen: 'accueil' }),
+      proprioBg: proprio ? '#FFFFFF' : 'transparent',
+      proprioFg: proprio ? '#121820' : 'rgba(255,255,255,.7)',
+      gestionBg: proprio ? 'transparent' : '#FFFFFF',
+      gestionFg: proprio ? 'rgba(255,255,255,.7)' : '#121820',
+
+      greeting: proprio ? 'Bonjour, Issa.' : 'Bonjour, Marc.',
+      intro: proprio ? 'Voici ce qui mérite votre attention aujourd\u2019hui.' : 'Voici ce qui attend une action de votre équipe.',
+      sectionOneLabel: proprio ? 'Ce qui mérite votre attention' : 'Ce qui attend une action',
+      accueilCards: proprio ? accueilProprio : accueilGestion,
+      priorites: proprio ? prioritesProprio : prioritesGestion,
+
+      alertGroups: [
+        { label: 'Critique', color: '#A23B2E', count: '1', items: [
+          { title: 'La marge brute baisse depuis trois semaines', body: '31,2 % en août contre 35,3 % en juillet.', trust: 'Analyse', when: '19 août', open: this.go('reco') } ] },
+        { label: 'Important', color: '#A6650A', count: '2', items: [
+          { title: 'Hausse du coût du contreplaqué chez Boisclair', body: '62 $ → 68 $ la feuille depuis le 28 juillet, sur 3 factures.', trust: 'Fait', when: '18 août', open: this.go('reco') },
+          { title: 'Ébénisterie Marchand a baissé ses prix de comptoirs', body: 'Environ −7 % sur la gamme équivalente au Nordik.', trust: 'Analyse', when: '17 août', open: this.go('reco') } ] },
+        { label: 'Surveillance', color: '#8C7A2A', count: '2', items: [
+          { title: '18 900 $ de comptes clients dépassent 60 jours', body: 'Dont 11 400 $ chez Cuisines Delorme.', trust: 'Fait', when: '19 août', open: this.go('taches') },
+          { title: 'Facture inhabituelle de 4 200 $ — Transport Fecteau', body: 'Quatre fois la moyenne des 12 derniers mois pour ce fournisseur.', trust: 'Fait', when: '16 août', open: this.go('reco') } ] },
+        { label: 'Opportunité', color: '#2E7D4F', count: '2', items: [
+          { title: 'Demande d\u2019armoires sur mesure en hausse en Estrie', body: 'Recherches locales +24 % sur trois mois.', trust: 'Hypothèse', when: '15 août', open: this.go('reco') },
+          { title: 'Programme ESSOR — volet équipement', body: 'Votre projet de plaqueuse de chants pourrait être admissible.', trust: 'Hypothèse', when: '12 août', open: this.go('reco') } ] },
+      ],
+
+      recoBlocks: [
+        { label: 'Situation', trust: 'Fait', text: 'La marge brute est passée de 35,3 % en juillet à 31,2 % en août, alors que le chiffre d\u2019affaires a progressé de 12 % (218 400 $).' },
+        { label: 'Analyse', trust: 'Hypothèse', text: 'Le contreplaqué de Boisclair est passé de 62 $ à 68 $ la feuille le 28 juillet. Vos prix de vente n\u2019ont pas été révisés depuis mars.' },
+        { label: 'Impact', trust: 'Prévision', text: 'Au volume actuel, environ 2 400 $ de marge perdue par mois, soit 28 800 $ sur douze mois.' },
+        { label: 'Action', trust: 'Recommandation', text: 'Demander une soumission à deux fournisseurs alternatifs et réviser le prix du comptoir Nordik de 4 à 6 %.' },
+      ],
+      createTask: () => this.setState({ taskAdded: true, screen: 'taches' }),
+      createTaskLabel: s.taskAdded ? 'Tâche créée — voir les tâches' : 'Créer la tâche',
+
+      taches,
+      tasksSummary: remaining + ' en cours sur ' + taches.length + ' · priorisées par le système',
+      filters: [
+        { label: 'Toutes', fg: '#FFFFFF', bg: '#121820' },
+        { label: 'Urgent', fg: '#121820', bg: '#FFFFFF' },
+        { label: 'Financier', fg: '#121820', bg: '#FFFFFF' },
+        { label: 'Commercial', fg: '#121820', bg: '#FFFFFF' },
+        { label: 'Opérationnel', fg: '#121820', bg: '#FFFFFF' },
+        { label: 'Stratégique', fg: '#121820', bg: '#FFFFFF' },
+      ],
+
+      kpis: [
+        { label: 'Chiffre d\u2019affaires', value: '218 400 $', delta: '+12,0 %', deltaColor: '#2E7D4F' },
+        { label: 'Marge brute', value: '31,2 %', delta: '−4,1 pts', deltaColor: '#A23B2E' },
+        { label: 'Trésorerie', value: '41 200 $', delta: '32 jours', deltaColor: '#5B6660' },
+        { label: 'Comptes clients', value: '63 800 $', delta: '18 900 $ > 60 j', deltaColor: '#A23B2E' },
+      ],
+      causal: [
+        { q: 'Qu\u2019est-ce qui s\u2019est passé ?', trust: 'Fait', a: 'Les ventes ont augmenté de 12 %, la marge brute a diminué de 4,1 points.' },
+        { q: 'Pourquoi ?', trust: 'Hypothèse', a: 'Hausse du coût du contreplaqué chez Boisclair (+9 %), non répercutée sur les prix de vente.' },
+        { q: 'Quel est l\u2019impact ?', trust: 'Prévision', a: 'Environ 2 400 $ de marge perdue par mois au volume actuel.' },
+        { q: 'Que devrait-on faire ?', trust: 'Recommandation', a: 'Soumissions alternatives sur le contreplaqué, puis révision du prix du comptoir Nordik.' },
+      ],
+      dimensions: [
+        { name: 'Finance', score: 71, color: '#A6650A', trend: '−6 pts', conf: 'élevée' },
+        { name: 'Ventes', score: 84, color: '#2E7D4F', trend: '+3 pts', conf: 'élevée' },
+        { name: 'Trésorerie', score: 62, color: '#A23B2E', trend: '−9 pts', conf: 'moyenne' },
+        { name: 'Clients', score: 80, color: '#2E7D4F', trend: 'stable', conf: 'élevée' },
+        { name: 'Opérations', score: 76, color: '#8C7A2A', trend: '−2 pts', conf: 'moyenne' },
+        { name: 'Marketing', score: 58, color: '#A23B2E', trend: 'stable', conf: 'faible' },
+        { name: 'Productivité', score: 82, color: '#2E7D4F', trend: '+4 pts', conf: 'moyenne' },
+        { name: 'Risques', score: 65, color: '#A6650A', trend: '−5 pts', conf: 'moyenne' },
+        { name: 'Croissance', score: 74, color: '#8C7A2A', trend: '+1 pt', conf: 'moyenne' },
+      ].map((d) => Object.assign({}, d, {
+        pct: d.score + '%',
+        arrow: d.trend.charAt(0) === '−' ? '▼' : (d.trend.charAt(0) === '+' ? '▲' : '■'),
+        trendColor: d.trend.charAt(0) === '−' ? '#A23B2E' : (d.trend.charAt(0) === '+' ? '#2E7D4F' : '#5B6660'),
+      })),
+
+      santeSerie: [81, 82, 81, 80, 81, 80, 79, 79, 78, 78, 77, 78].map((v, i, arr) => ({
+        h: Math.round(((v - 60) / 30) * 100) + '%',
+        color: i === arr.length - 1 ? '#1B6E62' : '#C2CBC7',
+      })),
+      margeSerie: [35.6, 35.2, 35.4, 35.1, 35.3, 35.0, 35.2, 34.9, 33.4, 32.1, 31.6, 31.2].map((v) => ({
+        h: Math.round(((v - 28) / 10) * 100) + '%',
+        color: v < 34 ? '#A23B2E' : '#C2CBC7',
+      })),
+
+      rapport: [
+        { label: 'Résumé', meta: '', trust: 'Analyse', text: 'Mois solide au chiffre d\u2019affaires (+12 %), fragilisé par la marge. Une décision d\u2019achat et une décision de prix sont en attente.' },
+        { label: 'Performance', meta: '1–19 août', trust: 'Fait', text: 'Ventes 218 400 $ · marge brute 31,2 % · trésorerie 41 200 $ · délai moyen de livraison 19 jours.' },
+        { label: 'Top risques', meta: '3 actifs', trust: 'Analyse', text: 'Coût du contreplaqué, baisse de prix de Marchand, 18 900 $ de créances de plus de 60 jours.' },
+        { label: 'Top opportunités', meta: '2', trust: 'Hypothèse', text: 'Demande d\u2019armoires sur mesure en hausse de 24 % en Estrie. Programme ESSOR, volet équipement.' },
+        { label: 'Actualités pertinentes', meta: 'radar externe', trust: 'Fait', text: 'Indice des produits du bois en hausse de 3,1 % au Canada en juillet.' },
+        { label: 'Actions proposées', meta: '3', trust: 'Recommandation', text: '1. Soumissions de contreplaqué. 2. Révision du prix Nordik. 3. Relance des factures de plus de 60 jours.' },
+        { label: 'Automatisations disponibles', meta: '1', trust: 'Recommandation', text: 'Envoyer les trois relances de paiement — nécessite votre confirmation.' },
+      ],
+
+      messages: messages.map((m) => (m.role === 'me'
+        ? { text: m.text, align: 'flex-end', bg: '#121820', fg: '#FFFFFF', border: '#121820', trust: '', sources: '' }
+        : { text: m.text, align: 'flex-start', bg: '#FFFFFF', fg: '#121820', border: '#DCE0DD', trust: m.trust, sources: m.sources })),
+      suggestions: [
+        { text: 'Quels sont mes trois plus gros risques ?', ask: ask('Quels sont mes trois plus gros risques ?', 'Coût du contreplaqué (score 82), 18 900 $ de créances de plus de 60 jours (74), baisse de prix de Marchand sur les comptoirs (68).', 'Analyse', 'alertes actives · comptes clients') },
+        { text: 'Quel client est le plus rentable ?', ask: ask('Quel client est le plus rentable ?', 'Cuisines Delorme : 47 300 $ facturés cette année à 38 % de marge. Mais 11 400 $ restent impayés depuis plus de 60 jours.', 'Fait', 'ventes · comptes clients') },
+        { text: 'Que dois-je faire cette semaine ?', ask: ask('Que dois-je faire cette semaine ?', 'Trois choses : obtenir deux soumissions de contreplaqué, relancer les factures de plus de 60 jours, décider du prix du comptoir Nordik.', 'Recommandation', 'tâches ouvertes') },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

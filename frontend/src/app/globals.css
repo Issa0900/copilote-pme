@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+:root {
+  /* Marque — palette du skill de design (encre / papier / surface / signal) */
+  --background: #f1f3f1;
+  --surface: #ffffff;
+  --surface-muted: #e6e8e7;
+  --foreground: #121820;
+  --foreground-muted: #5b6660;
+  --border: #dce0dd;
+
+  --accent: #1b6e62;
+  --accent-foreground: #ffffff;
+  --accent-muted: #e8f1ef;
+
+  /* Statut sémantique — 5 tons, jamais utilisés pour la marque ou un bouton d'action */
+  --danger: #a23b2e; /* critique */
+  --danger-foreground: #ffffff;
+  --danger-muted: #f6ebea;
+  --danger-border: #e1c0bc;
+
+  --warning: #a6650a; /* important */
+  --warning-foreground: #ffffff;
+  --warning-muted: #f6f0e7;
+  --warning-border: #e3ceb1;
+
+  --surveillance: #8c7a2a; /* surveillance */
+  --surveillance-foreground: #ffffff;
+  --surveillance-muted: #f4f2ea;
+  --surveillance-border: #dad4bb;
+
+  --success: #2e7d4f; /* opportunité */
+  --success-foreground: #ffffff;
+  --success-muted: #eaf2ed;
+  --success-border: #bcd5c7;
+
+  --info: #3d6482; /* information */
+  --info-foreground: #ffffff;
+  --info-muted: #ecf0f3;
+  --info-border: #c1cdd7;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-muted: var(--accent-muted);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-muted: var(--danger-muted);
+  --color-danger-border: var(--danger-border);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-warning-border: var(--warning-border);
+  --color-surveillance: var(--surveillance);
+  --color-surveillance-foreground: var(--surveillance-foreground);
+  --color-surveillance-muted: var(--surveillance-muted);
+  --color-surveillance-border: var(--surveillance-border);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-success-border: var(--success-border);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-muted: var(--info-muted);
+  --color-info-border: var(--info-border);
+  --font-sans: var(--font-ibm-plex-sans);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), "IBM Plex Sans", Arial, Helvetica, sans-serif;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}

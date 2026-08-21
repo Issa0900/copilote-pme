@@ -1,0 +1,143 @@
+import uuid
+from datetime import date as date_type
+from datetime import datetime
+
+from sqlalchemy import (
+    ARRAY,
+    JSON,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database import Base
+
+
+class Company(Base):
+    __tablename__ = "companies"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    sector: Mapped[str] = mapped_column(String(255), nullable=False)
+    location: Mapped[str] = mapped_column(String(255), nullable=False)
+    employees: Mapped[int] = mapped_column(Integer, nullable=False)
+    business_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    products: Mapped[str | None] = mapped_column(Text, nullable=True)
+    services: Mapped[str | None] = mapped_column(Text, nullable=True)
+    customers: Mapped[str | None] = mapped_column(Text, nullable=True)
+    suppliers: Mapped[str | None] = mapped_column(Text, nullable=True)
+    revenue_range: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    tools_used: Mapped[str | None] = mapped_column(Text, nullable=True)
+    objectives: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class Report(Base):
+    __tablename__ = "reports"
+    __table_args__ = (
+        UniqueConstraint("company_id", "type", "period", name="uq_report_company_type_period"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
+    )
+    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    period: Mapped[date_type] = mapped_column(Date, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
+class Import(Base):
+    __tablename__ = "imports"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
+    )
+    source_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    uploaded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    status: Mapped[str] = mapped_column(String(30), nullable=False)
+    quality_score: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    rows_processed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rows_quarantined: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
+    )
+    import_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("imports.id"), nullable=False
+    )
+    date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="validated")
+    quarantine_reasons: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String), nullable=True
+    )
+    raw_data: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
+class Recommendation(Base):
+    __tablename__ = "recommendations"
+    __table_args__ = (
+        UniqueConstraint("company_id", "source_key", name="uq_recommendation_source"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
+    )
+    source_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    situation: Mapped[str] = mapped_column(Text, nullable=False)
+    analysis: Mapped[str] = mapped_column(Text, nullable=False)
+    impact: Mapped[str] = mapped_column(Text, nullable=False)
+    action: Mapped[str] = mapped_column(Text, nullable=False)
+    priority: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="nouvelle")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
