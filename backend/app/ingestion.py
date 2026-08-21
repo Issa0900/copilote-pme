@@ -150,17 +150,30 @@ def map_and_validate(df: pd.DataFrame) -> list[MappedRow]:
     today = date.today()
     mapped_rows: list[MappedRow] = []
 
-    for _, row in df.iterrows():
+    # Optimisation : `pd.to_datetime` a un overhead important par appel
+    # (notoire sur de gros volumes). On le vectorise une seule fois sur toute
+    # la colonne de dates plutôt que ligne par ligne dans `_parse_date` (dont
+    # le comportement — dayfirst=True, NaT -> None — est reproduit ici à
+    # l'identique). La logique de quarantaine/validation ligne à ligne reste
+    # inchangée ci-dessous.
+    if column_map["date"] is not None:
+        parsed_dates_series = pd.to_datetime(
+            df[column_map["date"]], errors="coerce", dayfirst=True
+        )
+        parsed_dates = [None if pd.isna(ts) else ts.date() for ts in parsed_dates_series]
+    else:
+        parsed_dates = [None] * len(df)
+
+    for position, (_, row) in enumerate(df.iterrows()):
         raw_data = {str(k): (None if pd.isna(v) else str(v)) for k, v in row.items()}
 
-        raw_date = row[column_map["date"]] if column_map["date"] else None
         raw_amount = row[column_map["amount"]] if column_map["amount"] else None
         raw_category = row[column_map["category"]] if column_map["category"] else None
         raw_description = (
             row[column_map["description"]] if column_map["description"] else None
         )
 
-        parsed_date = _parse_date(raw_date)
+        parsed_date = parsed_dates[position]
         parsed_amount = _parse_amount(raw_amount)
         category = None if raw_category is None or pd.isna(raw_category) else str(raw_category)
         description = (

@@ -34,14 +34,20 @@ def _normalize_amount(amount) -> float | None:
     return round(float(amount), 2) if amount is not None else None
 
 
-async def _read_upload_within_limit(file: UploadFile, max_size: int) -> bytes:
+def _read_upload_within_limit(file: UploadFile, max_size: int) -> bytes:
     """Lit le fichier téléversé par blocs et interrompt dès que la limite est
     dépassée, plutôt que de charger un fichier arbitrairement volumineux en
-    mémoire avant de le vérifier."""
+    mémoire avant de le vérifier.
+
+    Lecture synchrone via `file.file` (le SpooledTemporaryFile sous-jacent) :
+    à ce stade, Starlette a déjà entièrement reçu et écrit le corps de la
+    requête multipart dans ce fichier avant d'appeler la route (que celle-ci
+    soit `async def` ou `def`), donc une lecture bloquante standard ici est
+    sûre et ne perd aucune donnée."""
     chunks: list[bytes] = []
     total = 0
     while True:
-        chunk = await file.read(_READ_CHUNK_SIZE)
+        chunk = file.file.read(_READ_CHUNK_SIZE)
         if not chunk:
             break
         total += len(chunk)
@@ -54,8 +60,18 @@ async def _read_upload_within_limit(file: UploadFile, max_size: int) -> bytes:
     return b"".join(chunks)
 
 
+# Route volontairement synchrone (pas `async def`) : `create_import` exécute
+# du travail CPU-bound (parsing pandas, boucle de validation ligne à ligne)
+# et des accès DB synchrones (psycopg2, driver bloquant). Dans une route
+# `async def`, ce travail bloquerait la boucle d'événements asyncio unique
+# de uvicorn et gèlerait TOUTES les requêtes concurrentes (y compris
+# /health) le temps du traitement — reproduit en conditions réelles avec un
+# import de 60k lignes (16s de latence sur /health pendant l'import). En
+# route `def` synchrone, FastAPI délègue automatiquement l'exécution à un
+# thread du threadpool de Starlette, libérant la boucle d'événements pour
+# les autres requêtes.
 @router.post("", response_model=ImportRead, status_code=201)
-async def create_import(
+def create_import(
     company_id: uuid.UUID, file: UploadFile, db: Session = Depends(get_db)
 ) -> Import:
     _get_company_or_404(company_id, db)
@@ -65,7 +81,7 @@ async def create_import(
     except UnsupportedFileError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    content = await _read_upload_within_limit(file, MAX_IMPORT_FILE_SIZE)
+    content = _read_upload_within_limit(file, MAX_IMPORT_FILE_SIZE)
 
     import_record = Import(
         company_id=company_id,
