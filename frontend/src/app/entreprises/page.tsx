@@ -1,68 +1,20 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { Badge, Card, EmptyState, LinkButton, PageHeader } from "@/components/ui";
-import { getApiUrl } from "@/lib/api";
-import type { Company, CompanyOptions } from "@/lib/types";
+import { apiFetch } from "@/lib/api";
+import type { Company } from "@/lib/types";
 
+// A logged-in user has exactly one company (their own, via /companies/me —
+// GET /companies, which used to list every tenant's companies, no longer
+// exists). This route has no UI of its own anymore: it just resolves the
+// current user's company and sends them straight to its dashboard.
+// (apiFetch already redirects to /connexion if there's no/expired session.)
 export default async function EntreprisesPage() {
-  const [companiesRes, optionsRes] = await Promise.all([
-    fetch(`${getApiUrl()}/companies`, { cache: "no-store" }),
-    fetch(`${getApiUrl()}/meta/company-options`, { cache: "no-store" }),
-  ]);
-  const companies: Company[] = companiesRes.ok ? await companiesRes.json() : [];
-  const options: CompanyOptions | null = optionsRes.ok
-    ? await optionsRes.json()
-    : null;
-  const objectiveLabels = new Map(
-    (options?.objectives ?? []).map((o) => [o.value, o.label])
-  );
+  const res = await apiFetch("/companies/me");
+  const company: Company | null = res.ok ? await res.json() : null;
 
-  return (
-    <main className="mx-auto w-full max-w-3xl p-6 sm:p-8">
-      <PageHeader
-        title="Mes entreprises"
-        actions={
-          <LinkButton href="/entreprises/nouvelle" variant="primary">
-            + Nouvelle entreprise
-          </LinkButton>
-        }
-      />
+  if (!company) {
+    redirect("/connexion");
+  }
 
-      {companies.length === 0 ? (
-        <EmptyState>Aucune entreprise pour l&apos;instant.</EmptyState>
-      ) : (
-        <ul className="space-y-3">
-          {companies.map((company) => (
-            <Card key={company.id}>
-              <Link
-                href={`/entreprises/${company.id}`}
-                className="font-medium hover:underline"
-              >
-                {company.name}
-              </Link>
-              <p className="mt-1 text-sm text-foreground-muted">
-                {company.sector} · {company.location} ·{" "}
-                <span className="font-mono">{company.employees}</span> employés
-              </p>
-              {company.objectives && company.objectives.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {company.objectives.map((value) => (
-                    <Badge key={value} tone="accent">
-                      {objectiveLabels.get(value) ?? value}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              <Link
-                href={`/entreprises/${company.id}/imports`}
-                className="mt-3 inline-block text-sm text-accent hover:underline"
-              >
-                Importer des données →
-              </Link>
-            </Card>
-          ))}
-        </ul>
-      )}
-    </main>
-  );
+  redirect(`/entreprises/${company.id}`);
 }

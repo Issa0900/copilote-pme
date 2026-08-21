@@ -1,5 +1,5 @@
 import { Card, EmptyState } from "@/components/ui";
-import { getApiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { ALERT_LEVEL_LABELS, ALERT_LEVEL_ORDER, ALERT_LEVEL_TONE } from "@/lib/alert-levels";
 import type { Alert } from "@/lib/types";
 
@@ -10,9 +10,7 @@ export default async function CompanyAlertsPage({
 }) {
   const { id } = await params;
 
-  const res = await fetch(`${getApiUrl()}/companies/${id}/alerts`, {
-    cache: "no-store",
-  });
+  const res = await apiFetch(`/companies/${id}/alerts`);
   const alerts: Alert[] = res.ok ? await res.json() : [];
 
   const grouped = ALERT_LEVEL_ORDER.map((level) => ({

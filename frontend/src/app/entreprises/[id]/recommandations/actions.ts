@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getApiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import type { RecommendationStatus } from "@/lib/types";
 
 export type SetRecommendationStatusState = {
@@ -15,8 +15,8 @@ export async function setRecommendationStatusAction(
   status: RecommendationStatus,
   _prevState: SetRecommendationStatusState
 ): Promise<SetRecommendationStatusState> {
-  const res = await fetch(
-    `${getApiUrl()}/companies/${companyId}/recommendations/${recommendationId}`,
+  const res = await apiFetch(
+    `/companies/${companyId}/recommendations/${recommendationId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

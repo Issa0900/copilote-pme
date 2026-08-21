@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { Button, Card } from "@/components/ui";
@@ -86,11 +87,43 @@ export function CompanyForm({ options }: { options: CompanyOptions }) {
             ))}
           </div>
         </fieldset>
+      </Card>
+
+      <Card className="space-y-4">
+        <p className="text-sm font-medium">Votre compte</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Courriel"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+          />
+          <Field
+            label="Mot de passe"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
+        </div>
+        <p className="text-xs text-foreground-muted">
+          Au moins 8 caractères. Ce compte sera le premier accès à cette
+          entreprise.
+        </p>
 
         <Button type="submit" disabled={pending}>
-          {pending ? "Création..." : "Créer l'entreprise"}
+          {pending ? "Création..." : "Créer mon entreprise et mon compte"}
         </Button>
       </Card>
+
+      <p className="text-sm text-foreground-muted">
+        Déjà un compte ?{" "}
+        <Link href="/connexion" className="text-accent hover:underline">
+          Se connecter
+        </Link>
+      </p>
     </form>
   );
 }
@@ -101,12 +134,16 @@ function Field({
   type = "text",
   required,
   min,
+  minLength,
+  autoComplete,
 }: {
   label: string;
   name: string;
   type?: string;
   required?: boolean;
   min?: number;
+  minLength?: number;
+  autoComplete?: string;
 }) {
   return (
     <div>
@@ -120,6 +157,8 @@ function Field({
         type={type}
         required={required}
         min={min}
+        minLength={minLength}
+        autoComplete={autoComplete}
         className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
       />
     </div>

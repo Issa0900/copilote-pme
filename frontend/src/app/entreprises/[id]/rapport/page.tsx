@@ -1,5 +1,5 @@
 import { EmptyState } from "@/components/ui";
-import { getApiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import type { Report } from "@/lib/types";
 import { ReportView } from "./report-view";
 
@@ -10,9 +10,7 @@ export default async function DailyReportPage({
 }) {
   const { id } = await params;
 
-  const res = await fetch(`${getApiUrl()}/companies/${id}/reports/daily`, {
-    cache: "no-store",
-  });
+  const res = await apiFetch(`/companies/${id}/reports/daily`);
   const report: Report | null = res.ok ? await res.json() : null;
 
   if (!report) {

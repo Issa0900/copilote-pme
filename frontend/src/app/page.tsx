@@ -15,8 +15,8 @@ export default function Home() {
         <LinkButton href="/entreprises/nouvelle" variant="primary">
           Créer mon entreprise
         </LinkButton>
-        <LinkButton href="/entreprises" variant="secondary">
-          Voir mes entreprises
+        <LinkButton href="/connexion" variant="secondary">
+          Se connecter
         </LinkButton>
       </div>
     </main>

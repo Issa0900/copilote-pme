@@ -1,5 +1,5 @@
 import { Badge, Card, EmptyState, SectionHeading } from "@/components/ui";
-import { getApiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import type { Import } from "@/lib/types";
 import { UploadForm } from "./upload-form";
 
@@ -24,9 +24,7 @@ export default async function CompanyImportsPage({
 }) {
   const { id } = await params;
 
-  const res = await fetch(`${getApiUrl()}/companies/${id}/imports`, {
-    cache: "no-store",
-  });
+  const res = await apiFetch(`/companies/${id}/imports`);
   const imports: Import[] = res.ok ? await res.json() : [];
 
   return (

@@ -4,11 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.anomalies import detect_anomalies
+from app.auth import require_company_access
 from app.database import get_db
 from app.models import Company, Transaction
 from app.schemas import AnomalyRead
 
-router = APIRouter(prefix="/companies/{company_id}", tags=["anomalies"])
+router = APIRouter(
+    prefix="/companies/{company_id}",
+    tags=["anomalies"],
+    dependencies=[Depends(require_company_access)],
+)
 
 
 def _get_company_or_404(company_id: uuid.UUID, db: Session) -> Company:

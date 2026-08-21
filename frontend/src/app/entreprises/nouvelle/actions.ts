@@ -1,9 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getApiUrl } from "@/lib/api";
+import { setSessionToken } from "@/lib/auth";
+import type { Company } from "@/lib/types";
 
 export type CreateCompanyState = {
   error?: string;
@@ -18,12 +19,25 @@ export async function createCompanyAction(
   const location = formData.get("location");
   const employeesRaw = formData.get("employees");
   const employees = employeesRaw ? Number(employeesRaw) : NaN;
+  const email = formData.get("email");
+  const password = formData.get("password");
 
-  if (!name || !sector || !location || Number.isNaN(employees)) {
+  if (
+    !name ||
+    !sector ||
+    !location ||
+    Number.isNaN(employees) ||
+    !email ||
+    !password
+  ) {
     return {
       error:
-        "Veuillez remplir les champs obligatoires (nom, secteur, localisation, nombre d'employés).",
+        "Veuillez remplir les champs obligatoires (nom, secteur, localisation, nombre d'employés, courriel, mot de passe).",
     };
+  }
+
+  if (typeof password === "string" && password.length < 8) {
+    return { error: "Le mot de passe doit contenir au moins 8 caractères." };
   }
 
   const payload = {
@@ -39,12 +53,15 @@ export async function createCompanyAction(
     revenue_range: formData.get("revenue_range") || null,
     tools_used: formData.get("tools_used") || null,
     objectives: formData.getAll("objectives"),
+    email,
+    password,
   };
 
-  const res = await fetch(`${getApiUrl()}/companies`, {
+  const res = await fetch(`${getApiUrl()}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    cache: "no-store",
   });
 
   if (!res.ok) {
@@ -57,6 +74,21 @@ export async function createCompanyAction(
     };
   }
 
-  revalidatePath("/entreprises");
-  redirect("/entreprises");
+  const { access_token: accessToken } = await res.json();
+  await setSessionToken(accessToken);
+
+  const meRes = await fetch(`${getApiUrl()}/companies/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+  const company: Company | null = meRes.ok ? await meRes.json() : null;
+
+  if (!company) {
+    return {
+      error:
+        "Compte créé, mais impossible de charger le tableau de bord. Réessayez de vous connecter.",
+    };
+  }
+
+  redirect(`/entreprises/${company.id}`);
 }

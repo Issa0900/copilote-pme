@@ -1,5 +1,5 @@
 import { Badge, Card, EmptyState, type Tone } from "@/components/ui";
-import { getApiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import type { Recommendation } from "@/lib/types";
 import { RecommendationActions } from "./recommendation-actions";
 
@@ -23,9 +23,7 @@ export default async function CompanyRecommendationsPage({
 }) {
   const { id } = await params;
 
-  const res = await fetch(`${getApiUrl()}/companies/${id}/recommendations`, {
-    cache: "no-store",
-  });
+  const res = await apiFetch(`/companies/${id}/recommendations`);
   const recommendations: Recommendation[] = res.ok ? await res.json() : [];
 
   return (

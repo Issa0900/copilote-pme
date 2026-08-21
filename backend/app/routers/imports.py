@@ -3,12 +3,17 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
+from app.auth import require_company_access
 from app.database import get_db
 from app.ingestion import UnparsableFileError, UnsupportedFileError, get_extension, load_dataframe, map_and_validate
 from app.models import Company, Import, Transaction
 from app.schemas import ImportRead, TransactionRead
 
-router = APIRouter(prefix="/companies/{company_id}/imports", tags=["imports"])
+router = APIRouter(
+    prefix="/companies/{company_id}/imports",
+    tags=["imports"],
+    dependencies=[Depends(require_company_access)],
+)
 
 # PRD 8.6 : limite de taille de fichier au MVP (protection contre l'épuisement
 # mémoire par upload volumineux avant toute validation de contenu).

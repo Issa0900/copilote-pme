@@ -74,6 +74,42 @@ class CompanyRead(CompanyBase):
     updated_at: datetime
 
 
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    company_id: uuid.UUID
+    email: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class UserRegister(CompanyBase):
+    """Inscription : crée l'entreprise et son premier utilisateur en une
+    fois. Réutilise les champs de CompanyBase (mêmes validations
+    objectives/revenue_range) et ajoute les identifiants du compte."""
+
+    email: str
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if len(value) < 8:
+            raise ValueError("le mot de passe doit contenir au moins 8 caractères")
+        return value
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class ImportRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

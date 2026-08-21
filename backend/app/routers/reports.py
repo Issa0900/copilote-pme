@@ -5,6 +5,7 @@ from typing import Callable
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import require_company_access
 from app.database import get_db
 from app.models import Company, Report
 from app.recommendations import sync_recommendations
@@ -16,7 +17,11 @@ from app.reports import (
 )
 from app.schemas import ReportRead
 
-router = APIRouter(prefix="/companies/{company_id}/reports", tags=["reports"])
+router = APIRouter(
+    prefix="/companies/{company_id}/reports",
+    tags=["reports"],
+    dependencies=[Depends(require_company_access)],
+)
 
 
 def _get_company_or_404(company_id: uuid.UUID, db: Session) -> Company:

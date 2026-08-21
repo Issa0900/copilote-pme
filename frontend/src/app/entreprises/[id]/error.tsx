@@ -23,12 +23,12 @@ export default function CompanyErrorBoundary({
       </h1>
       <p className="mt-2 max-w-md text-sm text-foreground-muted">
         Le serveur est peut-être temporairement injoignable. Réessayez, ou
-        revenez à la liste de vos entreprises.
+        revenez au tableau de bord de votre entreprise.
       </p>
       <div className="mt-6 flex gap-2">
         <Button onClick={() => retry()}>Réessayer</Button>
         <LinkButton href="/entreprises" variant="secondary">
-          ← Mes entreprises
+          ← Mon entreprise
         </LinkButton>
       </div>
     </main>

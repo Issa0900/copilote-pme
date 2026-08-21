@@ -15,7 +15,7 @@ export default async function NouvelleEntreprisePage() {
     <main className="mx-auto w-full max-w-2xl p-6 sm:p-8">
       <PageHeader
         title="Créer mon entreprise"
-        subtitle="Ces informations orientent les recommandations du système."
+        subtitle="Ces informations orientent les recommandations du système. Un compte est créé en même temps pour y accéder."
       />
       <CompanyForm options={options} />
     </main>

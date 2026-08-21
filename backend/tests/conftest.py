@@ -5,11 +5,14 @@ aucune donnée de test ne persiste, aucune base séparée n'est nécessaire."""
 import uuid
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import event
 from sqlalchemy.orm import sessionmaker
 
-from app.database import engine
-from app.models import Company, Import, Transaction
+from app.auth import create_access_token, hash_password
+from app.database import engine, get_db
+from app.main import app
+from app.models import Company, Import, Transaction, User
 
 
 @pytest.fixture()
@@ -69,6 +72,52 @@ def make_import(db_session):
         return imp
 
     return _make
+
+
+@pytest.fixture()
+def make_user(db_session):
+    def _make(company_id, **overrides):
+        user = User(
+            company_id=company_id,
+            email=overrides.pop("email", "test@example.com"),
+            hashed_password=hash_password(overrides.pop("password", "test-password-123")),
+            **overrides,
+        )
+        db_session.add(user)
+        db_session.flush()
+        return user
+
+    return _make
+
+
+@pytest.fixture()
+def authed_client(db_session, make_company, make_user):
+    """Fournit un TestClient dont la dépendance get_db pointe vers la même
+    transaction (db_session, annulée en fin de test — cf. fixture db_session)
+    et dont le header Authorization porte déjà un token valide pour un
+    utilisateur/entreprise de test fraîchement créés.
+
+    Usage pour ing-qa lors de la migration des tests HTTP existants :
+
+        def test_something(authed_client):
+            client, user, company = authed_client
+            resp = client.get(f"/companies/{company.id}/kpis")
+            assert resp.status_code == 200
+
+    Pour tester un accès refusé entre organisations, générer un second couple
+    company/user avec `make_company`/`make_user` et son propre token via
+    `create_access_token`.
+    """
+    company = make_company()
+    user = make_user(company.id)
+    token = create_access_token(user)
+
+    app.dependency_overrides[get_db] = lambda: db_session
+    client = TestClient(app, headers={"Authorization": f"Bearer {token}"})
+    try:
+        yield client, user, company
+    finally:
+        app.dependency_overrides.pop(get_db, None)
 
 
 @pytest.fixture()

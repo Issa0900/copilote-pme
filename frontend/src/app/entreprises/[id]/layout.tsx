@@ -1,6 +1,6 @@
-import Link from "next/link";
-
-import { getApiUrl } from "@/lib/api";
+import { logoutAction } from "@/app/connexion/actions";
+import { Button } from "@/components/ui";
+import { apiFetch } from "@/lib/api";
 import type { Company } from "@/lib/types";
 import { CompanyNav } from "./company-nav";
 
@@ -12,26 +12,29 @@ export default async function CompanyLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const res = await fetch(`${getApiUrl()}/companies/${id}`, { cache: "no-store" });
+  const res = await apiFetch(`/companies/${id}`);
   const company: Company | null = res.ok ? await res.json() : null;
 
   return (
     <main className="mx-auto w-full max-w-3xl p-6 sm:p-8">
-      <Link
-        href="/entreprises"
-        className="mb-4 inline-block text-sm text-foreground-muted hover:text-foreground"
-      >
-        ← Mes entreprises
-      </Link>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        {company ? (
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{company.name}</h1>
+            <p className="mt-1 text-sm text-foreground-muted">
+              {company.sector} · {company.location}
+            </p>
+          </div>
+        ) : (
+          <div />
+        )}
 
-      {company && (
-        <div className="mb-4">
-          <h1 className="text-2xl font-semibold tracking-tight">{company.name}</h1>
-          <p className="mt-1 text-sm text-foreground-muted">
-            {company.sector} · {company.location}
-          </p>
-        </div>
-      )}
+        <form action={logoutAction}>
+          <Button type="submit" variant="ghost" size="sm">
+            Déconnexion
+          </Button>
+        </form>
+      </div>
 
       <CompanyNav companyId={id} />
 

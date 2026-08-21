@@ -3,12 +3,17 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import require_company_access
 from app.database import get_db
 from app.models import Company, Recommendation
 from app.recommendations import sync_recommendations
 from app.schemas import RecommendationRead, RecommendationUpdate
 
-router = APIRouter(prefix="/companies/{company_id}/recommendations", tags=["recommendations"])
+router = APIRouter(
+    prefix="/companies/{company_id}/recommendations",
+    tags=["recommendations"],
+    dependencies=[Depends(require_company_access)],
+)
 
 
 def _get_company_or_404(company_id: uuid.UUID, db: Session) -> Company:

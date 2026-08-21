@@ -3,29 +3,39 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import get_current_user, require_company_access
 from app.database import get_db
-from app.models import Company
-from app.schemas import CompanyCreate, CompanyRead, CompanyUpdate
+from app.models import Company, User
+from app.schemas import CompanyRead, CompanyUpdate
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
+# POST "" (création libre d'une entreprise, sans utilisateur associé) a été
+# retirée : la création d'entreprise ne passe plus que par POST /auth/register,
+# qui crée la Company ET son premier User dans la même transaction (VULN-001/002).
 
-@router.post("", response_model=CompanyRead, status_code=201)
-def create_company(payload: CompanyCreate, db: Session = Depends(get_db)) -> Company:
-    company = Company(**payload.model_dump())
-    db.add(company)
-    db.commit()
-    db.refresh(company)
+# GET "" (liste de toutes les entreprises de tous les tenants, VULN-002) a été
+# retirée au profit de GET /companies/me, qui ne peut jamais renvoyer que
+# l'entreprise de l'utilisateur courant — un user = une company au MVP, une
+# liste n'aurait donc jamais eu plus d'un élément honnête à renvoyer.
+
+
+@router.get("/me", response_model=CompanyRead)
+def get_my_company(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Company:
+    company = db.get(Company, current_user.company_id)
+    if company is None:
+        raise HTTPException(status_code=404, detail="Entreprise introuvable")
     return company
 
 
-@router.get("", response_model=list[CompanyRead])
-def list_companies(db: Session = Depends(get_db)) -> list[Company]:
-    return db.query(Company).order_by(Company.created_at.desc()).all()
-
-
 @router.get("/{company_id}", response_model=CompanyRead)
-def get_company(company_id: uuid.UUID, db: Session = Depends(get_db)) -> Company:
+def get_company(
+    company_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_company_access),
+) -> Company:
     company = db.get(Company, company_id)
     if company is None:
         raise HTTPException(status_code=404, detail="Entreprise introuvable")
@@ -34,7 +44,10 @@ def get_company(company_id: uuid.UUID, db: Session = Depends(get_db)) -> Company
 
 @router.patch("/{company_id}", response_model=CompanyRead)
 def update_company(
-    company_id: uuid.UUID, payload: CompanyUpdate, db: Session = Depends(get_db)
+    company_id: uuid.UUID,
+    payload: CompanyUpdate,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_company_access),
 ) -> Company:
     company = db.get(Company, company_id)
     if company is None:

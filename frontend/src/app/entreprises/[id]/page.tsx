@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CategoryBreakdown } from "@/components/category-breakdown";
 import { NetTrendChart } from "@/components/net-trend-chart";
 import { Badge, Card, EmptyState, LinkButton, SectionHeading, StatTile } from "@/components/ui";
-import { getApiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { ALERT_LEVEL_LABELS, ALERT_LEVEL_TONE } from "@/lib/alert-levels";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type {
@@ -33,16 +33,15 @@ export default async function CompanyDashboardPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const api = getApiUrl();
 
   const [kpisRes, anomaliesRes, timeseriesRes, categoriesRes, alertsSummaryRes, recsRes] =
     await Promise.all([
-      fetch(`${api}/companies/${id}/kpis`, { cache: "no-store" }),
-      fetch(`${api}/companies/${id}/anomalies`, { cache: "no-store" }),
-      fetch(`${api}/companies/${id}/kpis/timeseries`, { cache: "no-store" }),
-      fetch(`${api}/companies/${id}/kpis/categories`, { cache: "no-store" }),
-      fetch(`${api}/companies/${id}/alerts/summary`, { cache: "no-store" }),
-      fetch(`${api}/companies/${id}/recommendations`, { cache: "no-store" }),
+      apiFetch(`/companies/${id}/kpis`),
+      apiFetch(`/companies/${id}/anomalies`),
+      apiFetch(`/companies/${id}/kpis/timeseries`),
+      apiFetch(`/companies/${id}/kpis/categories`),
+      apiFetch(`/companies/${id}/alerts/summary`),
+      apiFetch(`/companies/${id}/recommendations`),
     ]);
 
   const kpis: CompanyKpis | null = kpisRes.ok ? await kpisRes.json() : null;

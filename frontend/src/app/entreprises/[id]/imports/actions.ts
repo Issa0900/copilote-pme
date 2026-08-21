@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getApiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 export type UploadImportState = {
   error?: string;
@@ -23,7 +23,7 @@ export async function uploadImportAction(
   const upstreamForm = new FormData();
   upstreamForm.set("file", file, file.name);
 
-  const res = await fetch(`${getApiUrl()}/companies/${companyId}/imports`, {
+  const res = await apiFetch(`/companies/${companyId}/imports`, {
     method: "POST",
     body: upstreamForm,
   });

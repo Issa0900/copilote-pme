@@ -3,12 +3,17 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import require_company_access
 from app.database import get_db
 from app.kpis import compute_category_breakdown, compute_company_kpis, compute_daily_series
 from app.models import Company
 from app.schemas import CategoryBreakdownItem, CompanyKpis, DailyKpiPoint
 
-router = APIRouter(prefix="/companies/{company_id}", tags=["dashboard"])
+router = APIRouter(
+    prefix="/companies/{company_id}",
+    tags=["dashboard"],
+    dependencies=[Depends(require_company_access)],
+)
 
 
 def _get_company_or_404(company_id: uuid.UUID, db: Session) -> Company:
