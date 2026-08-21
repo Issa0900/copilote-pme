@@ -1,6 +1,7 @@
 """Pipeline d'ingestion MVP (PRD section 8.8) : CSV, XLSX, XLS, TSV, PDF texte natif."""
 
 import io
+import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import date
@@ -135,11 +136,19 @@ def _parse_amount(raw) -> float | None:
         return None
 
 
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{1,2}-\d{1,2}([T ].*)?$")
+
+
 def _parse_date(raw) -> date | None:
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return None
-    # Marché cible Québec/Canada : format JJ/MM/AAAA pour les dates ambiguës.
-    parsed = pd.to_datetime(raw, errors="coerce", dayfirst=True)
+    if isinstance(raw, str) and _ISO_DATE_RE.match(raw.strip()):
+        # Format ISO (AAAA-MM-JJ) non ambigu : dayfirst inverserait à tort
+        # mois et jour (ex. 2026-07-01 lu comme le 7 janvier 2026).
+        parsed = pd.to_datetime(raw, errors="coerce")
+    else:
+        # Marché cible Québec/Canada : format JJ/MM/AAAA pour les dates ambiguës.
+        parsed = pd.to_datetime(raw, errors="coerce", dayfirst=True)
     if pd.isna(parsed):
         return None
     return parsed.date()
