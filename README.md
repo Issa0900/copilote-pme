@@ -22,6 +22,18 @@ Le dépôt contient à la fois le cadrage produit et l'implémentation :
 - **[Charte de projet](docs/project-charter.md)** — justification d'affaires, critères de succès, RACI, gestion des risques.
 - **Un MVP en cours de développement** — authentification, création d'entreprise, import de fichiers (CSV/XLSX/PDF), dashboard, détection d'anomalies, recommandations, rapports et centre d'alertes.
 
+## Aperçu
+
+Import d'un fichier de transactions, dashboard généré automatiquement, détection d'anomalies et recommandations d'action — captures prises sur une instance locale avec des données de démonstration.
+
+| Import & score de qualité | Dashboard |
+|---|---|
+| ![Import de fichier](docs/screenshots/02-import.png) | ![Dashboard](docs/screenshots/03-dashboard.png) |
+
+| Alertes | Recommandations |
+|---|---|
+| ![Alertes](docs/screenshots/04-alertes.png) | ![Recommandations](docs/screenshots/05-recommandations.png) |
+
 ## Stack technique
 
 | Couche | Technologie |
