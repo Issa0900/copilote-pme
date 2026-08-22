@@ -1,0 +1,26 @@
+databases:
+  - name: copilote-pme-db
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: copilote-pme-backend
+    runtime: docker
+    rootDir: backend
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: copilote-pme-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "1440"
+      - key: CORS_ALLOWED_ORIGINS
+        value: http://localhost:3000

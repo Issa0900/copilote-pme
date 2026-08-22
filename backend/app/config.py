@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24  # 24h
 
+    # Liste d'origines autorisées séparées par des virgules (ex. domaine
+    # Vercel en production) — défaut au dev local pour ne rien casser.
+    cors_allowed_origins: str = "http://localhost:3000"
+
+    @property
+    def cors_allowed_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
+
     class Config:
         env_file = ".env"
 
