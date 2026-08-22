@@ -1,4 +1,4 @@
-import { Badge, Card, EmptyState, SectionHeading } from "@/components/ui";
+import { Badge, Card, EmptyState, LinkButton, PageHeader, SectionHeading } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Import } from "@/lib/types";
 import { UploadForm } from "./upload-form";
@@ -17,6 +17,13 @@ const STATUS_TONE: Record<string, "success" | "danger" | "neutral" | "surveillan
   en_quarantaine: "surveillance",
 };
 
+const PROFILE_LABELS: Record<string, string> = {
+  generique: "Générique",
+  ventes_pos: "Ventes (POS)",
+};
+
+const CONNECTORS = ["Square", "Lightspeed", "Banque"];
+
 export default async function CompanyImportsPage({
   params,
 }: {
@@ -29,12 +36,13 @@ export default async function CompanyImportsPage({
 
   return (
     <div className="space-y-8">
+      <PageHeader title="Import" />
       <div className="animate-enter" style={{ "--enter-delay": "0s" } as React.CSSProperties}>
         <SectionHeading>Importer un fichier</SectionHeading>
         <Card>
           <UploadForm companyId={id} />
           <p className="mt-3 text-xs text-foreground-muted">
-            Formats supportés au MVP : CSV, XLSX, XLS, TSV, PDF texte natif.
+            Formats supportés au MVP : CSV, XLSX, XLS, ODS, TSV, JSON, XML, PDF texte natif.
           </p>
         </Card>
       </div>
@@ -48,7 +56,10 @@ export default async function CompanyImportsPage({
             {imports.map((imp) => (
               <Card key={imp.id}>
                 <div className="flex items-center justify-between">
-                  <p className="font-medium">{imp.file_name}</p>
+                  <p className="flex items-center gap-2 font-medium">
+                    {imp.file_name}
+                    <Badge tone="neutral">{PROFILE_LABELS[imp.profile] ?? imp.profile}</Badge>
+                  </p>
                   <Badge tone={STATUS_TONE[imp.status] ?? "neutral"}>
                     {STATUS_LABELS[imp.status] ?? imp.status}
                   </Badge>
@@ -68,10 +79,40 @@ export default async function CompanyImportsPage({
                 {imp.error_message && (
                   <p className="mt-1 text-xs text-danger">{imp.error_message}</p>
                 )}
+                {imp.rows_quarantined > 0 && (
+                  <div className="mt-3">
+                    <LinkButton
+                      href={`/entreprises/${id}/imports/${imp.id}`}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      Voir les lignes en attente de vérification
+                    </LinkButton>
+                  </div>
+                )}
               </Card>
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="animate-enter" style={{ "--enter-delay": "0.1s" } as React.CSSProperties}>
+        <SectionHeading>Connecteurs</SectionHeading>
+        <Card>
+          <ul className="space-y-2.5">
+            {CONNECTORS.map((name) => (
+              <li key={name} className="flex items-center justify-between text-sm opacity-60">
+                <span>{name}</span>
+                <Badge tone="neutral">Bientôt disponible</Badge>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs text-foreground-muted">
+            La connexion directe à ces sources arrivera dans une prochaine phase — pour
+            l&apos;instant, l&apos;import de fichier ci-dessus est la seule façon d&apos;ajouter des
+            données.
+          </p>
+        </Card>
       </div>
     </div>
   );

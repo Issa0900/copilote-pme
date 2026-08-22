@@ -116,6 +116,7 @@ class ImportRead(BaseModel):
     id: uuid.UUID
     company_id: uuid.UUID
     source_type: str
+    profile: str
     file_name: str
     uploaded_at: datetime
     status: str

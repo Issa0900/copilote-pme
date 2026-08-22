@@ -1,11 +1,18 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.auth import require_company_access
 from app.database import get_db
-from app.ingestion import UnparsableFileError, UnsupportedFileError, get_extension, load_dataframe, map_and_validate
+from app.ingestion import (
+    PROFILES,
+    UnparsableFileError,
+    UnsupportedFileError,
+    get_extension,
+    load_dataframe,
+    map_and_validate,
+)
 from app.models import Company, Import, Transaction
 from app.schemas import ImportRead, TransactionRead
 
@@ -72,9 +79,18 @@ def _read_upload_within_limit(file: UploadFile, max_size: int) -> bytes:
 # les autres requêtes.
 @router.post("", response_model=ImportRead, status_code=201)
 def create_import(
-    company_id: uuid.UUID, file: UploadFile, db: Session = Depends(get_db)
+    company_id: uuid.UUID,
+    file: UploadFile,
+    profile: str = Form("generique"),
+    db: Session = Depends(get_db),
 ) -> Import:
     _get_company_or_404(company_id, db)
+
+    if profile not in PROFILES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Profil d'import inconnu : {profile}. Attendu : {', '.join(sorted(PROFILES))}.",
+        )
 
     try:
         ext = get_extension(file.filename or "")
@@ -86,6 +102,7 @@ def create_import(
     import_record = Import(
         company_id=company_id,
         source_type=ext,
+        profile=profile,
         file_name=file.filename or "fichier",
         status="en_cours",
         rows_processed=0,
@@ -103,7 +120,7 @@ def create_import(
         db.refresh(import_record)
         return import_record
 
-    mapped_rows = map_and_validate(df)
+    mapped_rows = map_and_validate(df, profile=profile)
 
     # Détection de doublons (PRD 8.6 / 9.3, exigée dès le MVP) : comparaison
     # exacte sur (date, montant, description) contre les transactions déjà

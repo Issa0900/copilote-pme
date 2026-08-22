@@ -99,6 +99,7 @@ class Import(Base):
         UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
     )
     source_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    profile: Mapped[str] = mapped_column(String(20), nullable=False, default="generique")
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     uploaded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     uploaded_at: Mapped[datetime] = mapped_column(

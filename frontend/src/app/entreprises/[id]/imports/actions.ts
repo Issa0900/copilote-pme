@@ -15,6 +15,7 @@ export async function uploadImportAction(
   formData: FormData
 ): Promise<UploadImportState> {
   const file = formData.get("file");
+  const profile = formData.get("profile");
 
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Veuillez choisir un fichier à importer." };
@@ -22,6 +23,7 @@ export async function uploadImportAction(
 
   const upstreamForm = new FormData();
   upstreamForm.set("file", file, file.name);
+  upstreamForm.set("profile", typeof profile === "string" && profile ? profile : "generique");
 
   const res = await apiFetch(`/companies/${companyId}/imports`, {
     method: "POST",
