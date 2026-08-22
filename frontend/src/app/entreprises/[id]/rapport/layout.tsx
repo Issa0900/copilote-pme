@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui";
 import { ReportTabs } from "./report-tabs";
 
 export default async function ReportLayout({
@@ -11,6 +12,7 @@ export default async function ReportLayout({
 
   return (
     <div>
+      <PageHeader title="Rapports" />
       <ReportTabs companyId={id} />
       {children}
     </div>

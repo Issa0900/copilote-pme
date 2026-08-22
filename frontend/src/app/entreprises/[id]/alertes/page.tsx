@@ -1,4 +1,4 @@
-import { Badge, Card, EmptyState, SectionHeading, TrustBadge } from "@/components/ui";
+import { Badge, Card, EmptyState, PageHeader, SectionHeading, TrustBadge } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { amountRange, groupAlerts } from "@/lib/alert-groups";
 import { ALERT_LEVEL_LABELS, ALERT_LEVEL_ORDER, ALERT_LEVEL_TONE } from "@/lib/alert-levels";
@@ -22,6 +22,10 @@ export default async function CompanyAlertsPage({
 
   return (
     <div>
+      <PageHeader
+        title="Alertes"
+        subtitle="Tous les signaux détectés, du plus urgent au moins urgent — une vue d'ensemble à consulter, pas encore une liste de tâches."
+      />
       {alerts.length === 0 ? (
         <EmptyState>Aucune alerte pour l&apos;instant.</EmptyState>
       ) : (

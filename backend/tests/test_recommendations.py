@@ -1,3 +1,5 @@
+from datetime import date
+
 from app.anomalies import Anomaly
 from app.models import Recommendation
 from app.recommendations import (
@@ -71,12 +73,26 @@ def test_get_company_recommendations_exposes_category_field(
 ):
     # Une recommandation générée à partir d'une anomalie de catégorie connue
     # (ici "Salaires") doit porter cette catégorie dans la réponse API.
+    #
+    # Le détecteur d'outliers exige une baseline d'au moins MIN_BASELINE_SAMPLE
+    # (8) transactions datées avant la fenêtre récente (30 jours précédant la
+    # date la plus récente des données) ; l'outlier doit être daté dans cette
+    # fenêtre récente pour être testé contre la baseline. L'outlier reste
+    # d'amplitude modeste (-200 plutôt que -10 000) : un montant trop extrême
+    # ferait aussi basculer le total récent bien au-delà du seuil du
+    # détecteur de tendance (indépendant, basé sur un partage médian de
+    # toutes les dates de la catégorie), ce qui ajouterait une seconde
+    # recommandation "category_trend" et invaliderait l'assertion ci-dessous.
     client, _user, company = authed_client
     imp = make_import(company.id)
 
-    for _ in range(20):
-        make_transaction(company.id, imp.id, amount=-100, category="Salaires")
-    make_transaction(company.id, imp.id, amount=-10_000, category="Salaires")
+    for i in range(1, 21):
+        make_transaction(
+            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 1, i)
+        )
+    make_transaction(
+        company.id, imp.id, amount=-200, category="Salaires", date=date(2024, 6, 15)
+    )
 
     resp = client.get(f"/companies/{company.id}/recommendations")
     assert resp.status_code == 200

@@ -119,7 +119,7 @@ def _generate_report_content(
     period_label: str,
     db: Session,
 ) -> dict:
-    kpis = compute_company_kpis(company_id, db)
+    kpis = compute_company_kpis(company_id, db, start_date=window_start, end_date=window_end)
 
     transactions = (
         db.query(Transaction)

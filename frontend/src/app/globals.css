@@ -1,50 +1,65 @@
 @import "tailwindcss";
 
 :root {
-  /* Marque — palette « ronde-vivante » retenue par Issa (skill/SKILL.md) */
-  --background: #f3f7f1; /* papier */
-  --surface: #ffffff;
-  --surface-muted: #e8f0e6; /* surface enfoncée — fonds de piste (jauges, barres) */
-  --foreground: #26332c; /* encre */
-  --foreground-muted: #6a7a70; /* encre douce */
-  --border: #dce9da;
+  /* Marque — révision « sombre-dense » du 2026-08-21 (skill/SKILL.md) */
+  --background: #0a0f1a;
+  --surface: #121a2b;
+  --surface-muted: #1a2338; /* surface enfoncée — fonds de piste (jauges, barres) */
+  --foreground: #eaf0f7;
+  --foreground-muted: #8792a8;
+  --border: rgb(255 255 255 / 8%);
 
-  --accent: #1b8564; /* signal */
+  --accent: #1b8564; /* signal — seule couleur de marque, inchangée */
   --accent-foreground: #ffffff;
-  --accent-strong: #0f6b4f; /* signal-fort — hover, emphase, dégradés */
-  --accent-muted: #e3f1ea;
+  --accent-strong: #2aa17c; /* signal-fort — relevé pour rester lisible sur fond sombre */
+  --accent-muted: color-mix(in srgb, var(--accent) 20%, var(--surface));
 
   /* Rail de navigation — fond toujours sombre, indépendant du thème */
-  --nav-bg: #17352a;
+  --nav-bg: #0e1a16;
   --nav-text: #eaf3ec;
   --nav-text-dim: #8fb3a2;
   --nav-active-text: #0b241a;
 
-  /* Statut sémantique — 5 tons INCHANGÉS, jamais utilisés pour la marque ou un bouton d'action */
+  /* Statut sémantique — 5 teintes de base INCHANGÉES, jamais utilisées pour la
+     marque ou un bouton d'action. Les variantes -muted/-border sont dérivées
+     via color-mix() plutôt que codées en dur : elles restent lisibles quel
+     que soit --surface/--border courants sans retuning manuel par thème. */
   --danger: #a23b2e; /* critique */
   --danger-foreground: #ffffff;
-  --danger-muted: #f6ebea;
-  --danger-border: #e1c0bc;
+  --danger-muted: color-mix(in srgb, var(--danger) 18%, var(--surface));
+  --danger-border: color-mix(in srgb, var(--danger) 45%, var(--border));
 
   --warning: #a6650a; /* important */
   --warning-foreground: #ffffff;
-  --warning-muted: #f6f0e7;
-  --warning-border: #e3ceb1;
+  --warning-muted: color-mix(in srgb, var(--warning) 18%, var(--surface));
+  --warning-border: color-mix(in srgb, var(--warning) 45%, var(--border));
 
   --surveillance: #8c7a2a; /* surveillance */
   --surveillance-foreground: #ffffff;
-  --surveillance-muted: #f4f2ea;
-  --surveillance-border: #dad4bb;
+  --surveillance-muted: color-mix(in srgb, var(--surveillance) 18%, var(--surface));
+  --surveillance-border: color-mix(in srgb, var(--surveillance) 45%, var(--border));
 
   --success: #2e7d4f; /* opportunité */
   --success-foreground: #ffffff;
-  --success-muted: #eaf2ed;
-  --success-border: #bcd5c7;
+  --success-muted: color-mix(in srgb, var(--success) 18%, var(--surface));
+  --success-border: color-mix(in srgb, var(--success) 45%, var(--border));
 
   --info: #3d6482; /* information */
   --info-foreground: #ffffff;
-  --info-muted: #ecf0f3;
-  --info-border: #c1cdd7;
+  --info-muted: color-mix(in srgb, var(--info) 18%, var(--surface));
+  --info-border: color-mix(in srgb, var(--info) 45%, var(--border));
+
+  /* Palette catégorielle — répartition par catégorie (donut) uniquement.
+     Volontairement distincte des 5 couleurs de statut ci-dessus pour qu'une
+     catégorie ne soit jamais lue comme une alerte. */
+  --chart-1: #4f8ff7;
+  --chart-2: #f2a341;
+  --chart-3: #c084fc;
+  --chart-4: #38bdae;
+  --chart-5: #f26d8d;
+  --chart-6: #8fa8f2;
+  --chart-7: #d4c14f;
+  --chart-8: #6ee7b7;
 }
 
 @theme inline {
@@ -100,6 +115,15 @@ textarea:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+/* Le rail de navigation reste toujours sombre (voir --nav-bg), indépendant
+   du thème clair/sombre du contenu — l'anneau de focus « accent » standard
+   n'y offre pas un contraste suffisant (et devient carrément invisible sur
+   l'onglet actif, déjà rempli en accent). On y bascule sur nav-text, clair,
+   qui reste lisible sur le fond sombre comme sur l'accent. */
+.bg-nav a:focus-visible {
+  outline-color: var(--nav-text);
 }
 
 /* Mouvement d'entrée orchestré (montée + fondu en cascade) — un seul type de

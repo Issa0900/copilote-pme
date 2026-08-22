@@ -113,12 +113,25 @@ def test_get_company_alerts_exposes_category_field(
     # Une alerte issue d'une anomalie de type transaction_outlier doit porter
     # la catégorie de la transaction source ; une alerte issue d'un import
     # échoué n'a pas de catégorie pertinente (category: null).
+    #
+    # Le détecteur exige une baseline d'au moins MIN_BASELINE_SAMPLE (8)
+    # transactions datées avant la fenêtre récente (30 jours précédant la
+    # date la plus récente des données de l'entreprise) ; l'outlier doit être
+    # daté dans cette fenêtre récente pour être testé contre la baseline.
     client, _user, company = authed_client
     imp = make_import(company.id)
 
-    for _ in range(20):
-        make_transaction(company.id, imp.id, amount=-100, category="Salaires")
-    outlier = make_transaction(company.id, imp.id, amount=-10_000, category="Salaires")
+    for i in range(1, 9):
+        make_transaction(
+            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 1, i)
+        )
+    for _ in range(12):
+        make_transaction(
+            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 6, 15)
+        )
+    outlier = make_transaction(
+        company.id, imp.id, amount=-10_000, category="Salaires", date=date(2024, 6, 15)
+    )
 
     make_import(company.id, status="echoue", error_message="fichier corrompu")
 

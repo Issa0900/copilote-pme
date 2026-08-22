@@ -1,4 +1,4 @@
-import { Badge, Card, EmptyState, TrustBadge, type Tone } from "@/components/ui";
+import { Badge, Card, EmptyState, PageHeader, TrustBadge, type Tone } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { groupRecommendations } from "@/lib/recommendation-groups";
 import type { Recommendation } from "@/lib/types";
@@ -70,6 +70,10 @@ export default async function CompanyRecommendationsPage({
 
   return (
     <div>
+      <PageHeader
+        title="Recommandations"
+        subtitle="Les signaux les plus sérieux des alertes, transformés en fiches d'action : situation, analyse, impact, et quoi faire."
+      />
       {recommendations.length === 0 ? (
         <EmptyState>Aucune recommandation pour l&apos;instant.</EmptyState>
       ) : (

@@ -31,7 +31,7 @@ export default async function CompanyLayout({
   const pendingRecs = recommendations.filter((r) => r.status === "nouvelle").length;
 
   return (
-    <div className="flex min-h-screen flex-1">
+    <div className="flex min-h-screen flex-1 flex-col lg:flex-row">
       <CompanyNav
         companyId={id}
         company={company}
@@ -40,7 +40,7 @@ export default async function CompanyLayout({
       />
 
       <main className="flex-1 px-6 py-8 sm:px-10">
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full max-w-6xl">
           <div className="mb-6 flex justify-end">
             <form action={logoutAction}>
               <Button type="submit" variant="ghost" size="sm">

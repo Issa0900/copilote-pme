@@ -31,9 +31,9 @@ SEVERITY_TO_PRIORITY = {
 
 ANALYSIS_TEXT = {
     "transaction_outlier": (
-        "Ce montant s'écarte nettement de vos habitudes récentes pour ce type de "
-        "transaction (revenu ou dépense), en comparaison de vos autres transactions "
-        "validées."
+        "Ce(s) montant(s) s'écarte(nt) nettement de vos habitudes récentes pour ce "
+        "type de transaction (revenu ou dépense) et cette catégorie, en comparaison "
+        "de votre historique validé."
     ),
     "category_trend": (
         "Le total de cette catégorie a nettement changé entre la période récente "
@@ -55,27 +55,28 @@ class RecommendationDraft:
 
 
 def _source_key(anomaly: Anomaly, detection_period: str) -> str:
-    if anomaly.type == "category_trend":
-        # Une anomalie de tendance n'a pas d'identifiant de transaction propre
-        # (elle porte sur une catégorie entière) : sans dimension temporelle,
-        # la clé reste identique indéfiniment et bloque toute nouvelle
-        # recommandation pour cette catégorie après le premier traitement.
-        # On inclut donc l'année-mois de détection pour permettre une
-        # nouvelle recommandation à chaque nouvel épisode (PRD Module 19).
-        return f"{anomaly.type}:{anomaly.category or ''}:{detection_period}"
-    return f"{anomaly.type}:{anomaly.category or ''}:{anomaly.transaction_id or ''}"
+    if anomaly.transaction_id:
+        return f"{anomaly.type}:{anomaly.category or ''}:{anomaly.transaction_id}"
+    # Une anomalie sans transaction unique (tendance de catégorie, ou groupe
+    # de plusieurs transactions inhabituelles) porte sur une catégorie
+    # entière : sans dimension temporelle, la clé resterait identique
+    # indéfiniment et bloquerait toute nouvelle recommandation pour cette
+    # catégorie après le premier traitement. On inclut donc l'année-mois de
+    # détection pour permettre une nouvelle recommandation à chaque nouvel
+    # épisode (PRD Module 19).
+    return f"{anomaly.type}:{anomaly.category or ''}:{detection_period}"
 
 
 def _impact_and_action(anomaly: Anomaly) -> tuple[str, str]:
     if anomaly.type == "transaction_outlier":
         impact = (
-            "Si ce montant est une erreur de saisie ou une transaction "
-            "frauduleuse/erronée, il fausse vos KPI (revenus, dépenses, résultat "
-            "net) tant qu'il n'est pas vérifié."
+            "Si ce(s) montant(s) est/sont une erreur de saisie ou une transaction "
+            "frauduleuse/erronée, il(s) fausse(nt) vos KPI (revenus, dépenses, "
+            "résultat net) tant qu'il(s) n'est/ne sont pas vérifié(s)."
         )
         action = (
-            "Vérifier cette transaction (pièce justificative, montant, "
-            "catégorie) et la corriger si nécessaire."
+            "Vérifier la ou les transactions concernées (pièce justificative, "
+            "montant, catégorie) et les corriger si nécessaire."
         )
         return impact, action
 

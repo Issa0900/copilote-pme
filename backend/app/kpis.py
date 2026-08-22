@@ -2,6 +2,7 @@
 validées uniquement (PRD section 9.3 : la quarantaine est exclue des KPI)."""
 
 import uuid
+from datetime import date as date_type
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,8 +13,32 @@ from app.schemas import CategoryBreakdownItem, CompanyKpis, DailyKpiPoint
 MAX_CATEGORIES = 6
 
 
-def compute_company_kpis(company_id: uuid.UUID, db: Session) -> CompanyKpis:
-    validated = Transaction.company_id == company_id, Transaction.status == "validated"
+def _date_range_filters(
+    start_date: date_type | None, end_date: date_type | None
+) -> list:
+    """Filtres optionnels de plage de dates, réutilisés par les 3 fonctions
+    ci-dessous. ``None`` (défaut) = pas de filtre, comportement historique
+    inchangé (tout-l'historique) — le filtrage par période est additif."""
+    filters: list = []
+    if start_date is not None:
+        filters.append(Transaction.date >= start_date)
+    if end_date is not None:
+        filters.append(Transaction.date <= end_date)
+    return filters
+
+
+def compute_company_kpis(
+    company_id: uuid.UUID,
+    db: Session,
+    start_date: date_type | None = None,
+    end_date: date_type | None = None,
+) -> CompanyKpis:
+    date_filters = _date_range_filters(start_date, end_date)
+    validated = [
+        Transaction.company_id == company_id,
+        Transaction.status == "validated",
+        *date_filters,
+    ]
 
     revenue_total = (
         db.query(func.coalesce(func.sum(Transaction.amount), 0))
@@ -33,7 +58,11 @@ def compute_company_kpis(company_id: uuid.UUID, db: Session) -> CompanyKpis:
     transactions_count = db.query(func.count(Transaction.id)).filter(*validated).scalar()
     quarantined_count = (
         db.query(func.count(Transaction.id))
-        .filter(Transaction.company_id == company_id, Transaction.status == "quarantined")
+        .filter(
+            Transaction.company_id == company_id,
+            Transaction.status == "quarantined",
+            *date_filters,
+        )
         .scalar()
     )
     period_start, period_end = (
@@ -57,7 +86,12 @@ def compute_company_kpis(company_id: uuid.UUID, db: Session) -> CompanyKpis:
     )
 
 
-def compute_daily_series(company_id: uuid.UUID, db: Session) -> list[DailyKpiPoint]:
+def compute_daily_series(
+    company_id: uuid.UUID,
+    db: Session,
+    start_date: date_type | None = None,
+    end_date: date_type | None = None,
+) -> list[DailyKpiPoint]:
     """Résultat net par jour, transactions validées uniquement."""
     rows = (
         db.query(
@@ -68,6 +102,7 @@ def compute_daily_series(company_id: uuid.UUID, db: Session) -> list[DailyKpiPoi
             Transaction.company_id == company_id,
             Transaction.status == "validated",
             Transaction.date.isnot(None),
+            *_date_range_filters(start_date, end_date),
         )
         .group_by(Transaction.date)
         .order_by(Transaction.date)
@@ -77,7 +112,10 @@ def compute_daily_series(company_id: uuid.UUID, db: Session) -> list[DailyKpiPoi
 
 
 def compute_category_breakdown(
-    company_id: uuid.UUID, db: Session
+    company_id: uuid.UUID,
+    db: Session,
+    start_date: date_type | None = None,
+    end_date: date_type | None = None,
 ) -> list[CategoryBreakdownItem]:
     """Total absolu par catégorie, transactions validées uniquement. Les
     catégories au-delà de MAX_CATEGORIES sont regroupées sous « Autres »."""
@@ -90,6 +128,7 @@ def compute_category_breakdown(
             Transaction.company_id == company_id,
             Transaction.status == "validated",
             Transaction.category.isnot(None),
+            *_date_range_filters(start_date, end_date),
         )
         .group_by(Transaction.category)
         .order_by(func.sum(func.abs(Transaction.amount)).desc())

@@ -11,11 +11,14 @@ export function ReportView({
 }) {
   return (
     <div className="space-y-8">
-      <p className="-mt-2 text-sm text-foreground-muted">
+      <p
+        className="animate-enter -mt-2 text-sm text-foreground-muted"
+        style={{ "--enter-delay": "0s" } as React.CSSProperties}
+      >
         Rapport du <span className="font-mono">{formatDate(report.period)}</span>
       </p>
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.05s" } as React.CSSProperties}>
         <SectionHeading>
           <span className="flex flex-wrap items-center gap-2">
             <TrustBadge level="fait" />
@@ -30,7 +33,7 @@ export function ReportView({
         </ul>
       </div>
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.1s" } as React.CSSProperties}>
         <SectionHeading>
           <span className="flex flex-wrap items-center gap-2">
             <TrustBadge level="fait" />
@@ -66,7 +69,7 @@ export function ReportView({
         </div>
       </div>
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.15s" } as React.CSSProperties}>
         <SectionHeading>Risques ({report.content.risques.length})</SectionHeading>
         {report.content.risques.length === 0 ? (
           <EmptyState>Aucun risque en attente.</EmptyState>
@@ -85,17 +88,17 @@ export function ReportView({
         )}
       </div>
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.2s" } as React.CSSProperties}>
         <SectionHeading>Opportunités</SectionHeading>
         <EmptyState>{report.content.opportunites.note}</EmptyState>
       </div>
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.25s" } as React.CSSProperties}>
         <SectionHeading>Actualités pertinentes</SectionHeading>
         <EmptyState>{report.content.actualites.note}</EmptyState>
       </div>
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.3s" } as React.CSSProperties}>
         <SectionHeading>Actions</SectionHeading>
         {report.content.actions.length === 0 ? (
           <EmptyState>Aucune action prioritaire.</EmptyState>
@@ -108,12 +111,17 @@ export function ReportView({
         )}
       </div>
 
-      <div>
+      <div className="animate-enter" style={{ "--enter-delay": "0.35s" } as React.CSSProperties}>
         <SectionHeading>Automatisations</SectionHeading>
         <EmptyState>{report.content.automatisations.note}</EmptyState>
       </div>
 
-      <p className="text-xs text-foreground-muted">{cadenceNote}</p>
+      <p
+        className="animate-enter text-xs text-foreground-muted"
+        style={{ "--enter-delay": "0.4s" } as React.CSSProperties}
+      >
+        {cadenceNote}
+      </p>
     </div>
   );
 }

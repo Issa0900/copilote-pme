@@ -31,40 +31,66 @@ def test_no_anomaly_when_all_amounts_identical():
 
 
 def test_outlier_detected_and_classified_high():
-    # 20 transactions de référence : assez pour qu'un outlier extrême dépasse
-    # le seuil "high" malgré son propre effet sur l'écart-type (voir le test
-    # de régression ci-dessous pour le cas d'échantillon minimal).
-    normal = [_txn(100) for _ in range(20)]
-    outlier = _txn(10_000)
-    anomalies = detect_anomalies(normal + [outlier])
+    # Baseline d'au moins MIN_BASELINE_SAMPLE (8) transactions datées bien
+    # avant la fenêtre récente (30 jours précédant la date la plus récente
+    # des données) : nécessaire pour que le détecteur calcule une médiane/MAD
+    # de référence pour ce groupe (catégorie, signe). Le reste des
+    # transactions « normales » et l'outlier sont datés dans la fenêtre
+    # récente, seule population testée contre la baseline.
+    baseline = [_txn(100, d=date(2024, 1, i)) for i in range(1, 9)]
+    recent_normal = [_txn(100, d=date(2024, 6, 1)) for _ in range(12)]
+    outlier = _txn(10_000, d=date(2024, 6, 1))
+    anomalies = detect_anomalies(baseline + recent_normal + [outlier])
     outlier_anomalies = [a for a in anomalies if a.type == "transaction_outlier"]
     assert len(outlier_anomalies) == 1
     assert outlier_anomalies[0].severity == "high"
     assert outlier_anomalies[0].transaction_id == str(outlier.id)
 
 
-def test_outlier_severity_capped_at_minimum_sample_size():
-    # Limitation connue (identifiée en revue) : le z-score inclut le point
-    # aberrant dans le calcul de sa propre moyenne/écart-type. Avec le
-    # minimum de transactions requis (6 = MIN_TRANSACTIONS_FOR_OUTLIER_STATS),
-    # un seul outlier — même arbitrairement extrême — plafonne mathématiquement
-    # à z ≈ sqrt(n-1) ≈ 2.45, donc ne peut JAMAIS être classé "medium"/"high",
-    # quelle que soit son ampleur. Ce test documente ce comportement actuel
-    # (pas un correctif — un changement de cette logique est hors scope tant
-    # qu'il n'a pas été validé contre les données de démo déjà vérifiées).
-    normal = [_txn(100) for _ in range(6)]
-    extreme_outlier = _txn(1_000_000)
-    anomalies = detect_anomalies(normal + [extreme_outlier])
+def test_outlier_detected_with_minimum_baseline_sample():
+    # Ancien comportement (modèle par écart-type, remplacé) : le point
+    # aberrant était inclus dans le calcul de sa propre moyenne/écart-type,
+    # ce qui plafonnait mathématiquement le z-score avec un petit échantillon
+    # (z ≈ sqrt(n-1)), empêchant JAMAIS un outlier extrême d'être classé
+    # "medium"/"high" avec peu de données.
+    #
+    # Le nouveau modèle sépare proprement baseline (référence, avant la
+    # fenêtre récente) et recent (transactions testées, dans la fenêtre) :
+    # le point testé n'influence jamais sa propre référence, donc ce
+    # plafond n'existe plus. Ce test vérifie qu'une baseline de taille
+    # exactement minimale (MIN_BASELINE_SAMPLE = 8) suffit à détecter un
+    # outlier extrême sans plafonnement.
+    baseline = [_txn(100, d=date(2024, 1, i)) for i in range(1, 9)]  # exactement 8
+    extreme_outlier = _txn(1_000_000, d=date(2024, 6, 1))
+    anomalies = detect_anomalies(baseline + [extreme_outlier])
     outlier_anomalies = [a for a in anomalies if a.type == "transaction_outlier"]
     assert len(outlier_anomalies) == 1
-    assert outlier_anomalies[0].severity == "low"
+    assert outlier_anomalies[0].severity == "high"
+
+
+def test_no_outlier_below_minimum_baseline_sample():
+    # Avec seulement 7 transactions de référence (< MIN_BASELINE_SAMPLE = 8),
+    # le groupe (catégorie, signe) est ignoré entièrement par le détecteur,
+    # même en présence d'un point manifestement aberrant dans la fenêtre récente.
+    baseline = [_txn(100, d=date(2024, 1, i)) for i in range(1, 8)]  # 7 seulement
+    extreme_outlier = _txn(1_000_000, d=date(2024, 6, 1))
+    anomalies = detect_anomalies(baseline + [extreme_outlier])
+    outlier_anomalies = [a for a in anomalies if a.type == "transaction_outlier"]
+    assert outlier_anomalies == []
 
 
 def test_revenue_and_expense_populations_are_independent():
-    # Une dépense inhabituelle ne doit pas être noyée dans la population des revenus.
-    revenues = [_txn(100) for _ in range(6)]
-    expenses = [_txn(-50) for _ in range(6)] + [_txn(-5000)]
-    anomalies = detect_anomalies(revenues + expenses)
+    # Une dépense inhabituelle ne doit pas être noyée dans la population des
+    # revenus. Chaque population (revenu/dépense) a sa propre baseline d'au
+    # moins MIN_BASELINE_SAMPLE (8) transactions avant la fenêtre récente.
+    revenue_baseline = [_txn(100, d=date(2024, 1, i)) for i in range(1, 9)]
+    expense_baseline = [_txn(-50, d=date(2024, 1, i)) for i in range(1, 9)]
+    revenue_recent = [_txn(100, d=date(2024, 6, 1)) for _ in range(6)]
+    expense_recent = [_txn(-50, d=date(2024, 6, 1)) for _ in range(6)]
+    outlier = _txn(-5000, d=date(2024, 6, 1))
+    anomalies = detect_anomalies(
+        revenue_baseline + expense_baseline + revenue_recent + expense_recent + [outlier]
+    )
     outlier_anomalies = [a for a in anomalies if a.type == "transaction_outlier"]
     assert len(outlier_anomalies) == 1
     assert outlier_anomalies[0].message.startswith("Une dépense inhabituelle")

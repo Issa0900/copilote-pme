@@ -20,7 +20,16 @@ Avant de concevoir un écran :
 
 Ce qui suit constitue l'identité visuelle du produit. Elle a été choisie une fois pour garder une cohérence entre des écrans générés à des moments différents ; ne pas repartir d'une palette ou d'une typographie neutre à chaque nouvelle demande, sauf si Issa demande explicitement de la revoir.
 
-**Révision du 2026-08-21** : direction assouplie à la demande explicite d'Issa (langage utilisateur simple, palette plus douce et harmonisée, interface plus vivante et soignée), en remplacement de la direction initiale strictement sobre. Le sérieux d'un outil de pilotage pour dirigeant reste non négociable — ce n'est pas devenu une application grand public — mais le ton visuel est désormais chaleureux et arrondi plutôt que froid et clinique. Deux explorations ont été proposées (« sobre-chaleureuse » et « ronde-vivante ») ; Issa a retenu la seconde. C'est elle qui est documentée ci-dessous.
+**Révision du 2026-08-21** : direction assouplie à la demande explicite d'Issa (langage utilisateur simple, palette plus douce et harmonisée, interface plus vivante et soignée), en remplacement de la direction initiale strictement sobre. Le sérieux d'un outil de pilotage pour dirigeant reste non négociable — ce n'est pas devenu une application grand public — mais le ton visuel est désormais chaleureux et arrondi plutôt que froid et clinique. Deux explorations ont été proposées (« sobre-chaleureuse » et « ronde-vivante ») ; Issa a retenu la seconde.
+
+**Révision du 2026-08-21 (2) — thème sombre dense** : Issa a trouvé la direction « ronde-vivante » ci-dessus trop vide/sobre et a fourni une image de référence (dashboard SaaS sombre et dense, icônes partout, mini-graphiques dans les cartes, donut chart de répartition). Deux changements en résultent, le reste de la direction « ronde-vivante » (formes rondes, mouvement, typographie, une seule couleur de marque) reste vrai et documenté ci-dessous — seul le fond change de clair à sombre et la densité augmente :
+
+- **Fond sombre navy** remplace le fond papier clair. Nouvelle table de palette de marque plus bas. Les 5 couleurs de statut sémantique gardent leurs teintes de base exactes ; seules leurs variantes `-muted`/`-border` sont recalculées (via `color-mix()` avec la surface courante) pour rester lisibles sur fond sombre.
+- **Exception scopée au donut chart** : autorisé **uniquement** pour une répartition d'un tout en catégories (ex. dépenses par catégorie), avec une palette catégorielle dédiée distincte des couleurs de statut. La règle « jamais de jauge circulaire » reste vraie pour **tout score** (santé globale, dimension, risque, opportunité, confiance) — ces jauges-là restent horizontales.
+- Non-négociables inchangés malgré le passage au sombre : badge de fiabilité toujours gris neutre, 5 couleurs de statut sémantique inchangées, une seule couleur d'accent de marque (signal vert), formes rondes, mouvement discipliné.
+- Densité : le contenu peut désormais s'étaler sur plusieurs colonnes (au lieu d'une colonne centrée étroite) et les tuiles de statistique peuvent porter une icône contextuelle et, quand une vraie série quotidienne existe pour cette métrique, une mini-tendance (sparkline) — jamais une tendance inventée pour combler l'espace sur une métrique qui n'a pas de série réelle.
+
+C'est cette version sombre qui est documentée ci-dessous.
 
 ### Ton
 
@@ -32,16 +41,17 @@ Marque (5 tons) :
 
 | Rôle | Nom | Hex |
 |---|---|---|
-| Texte, structure forte | encre | `#26332C` |
-| Fond de page | papier | `#F3F7F1` |
-| Surface (cartes, panneaux) | surface | `#FFFFFF` |
+| Texte, structure forte | brume | `#EAF0F7` |
+| Fond de page | encre-nuit | `#0A0F1A` |
+| Surface (cartes, panneaux) | surface | `#121A2B` |
+| Surface enfoncée (pistes de jauges/barres) | surface-douce | `#1A2338` |
 | Accent, interactif, CTA | signal | `#1B8564` |
-| Accent appuyé (hover, dégradés, valeurs positives fortes) | signal-fort | `#0F6B4F` |
-| Rail de navigation (fond, toujours sombre, indépendant du thème) | nav | `#17352A` |
+| Accent appuyé (hover, dégradés, valeurs positives fortes) | signal-fort | `#2AA17C` |
+| Rail de navigation (fond, toujours sombre, indépendant du thème) | nav | `#0E1A16` |
 
-Le fond de page reprend délibérément une teinte proche de l'accent (vert très désaturé) plutôt qu'un gris neutre — c'est ce qui rend la palette « harmonisée » plutôt qu'un accent isolé sur un fond froid. Texte secondaire : `#6A7A70` (bordures : `#DCE9DA`).
+Le fond de page est un navy profond plutôt qu'un noir pur — c'est ce qui garde la palette « vivante » plutôt que froide malgré le passage au sombre. Texte secondaire : `#8792A8` (bordures : `rgb(255 255 255 / 8%)`).
 
-Statut sémantique (5 tons, jamais utilisés pour la marque ou un bouton d'action — réservés à l'état d'une donnée) :
+Statut sémantique (5 tons de base, jamais utilisés pour la marque ou un bouton d'action — réservés à l'état d'une donnée) :
 
 | Niveau | Hex | Usage |
 |---|---|---|
@@ -51,7 +61,9 @@ Statut sémantique (5 tons, jamais utilisés pour la marque ou un bouton d'actio
 | Opportunité | `#2E7D4F` | possibilité intéressante |
 | Information | `#3D6482` | contexte, sans action requise |
 
-Ces cinq niveaux reprennent les couleurs 🔴🟠🟡🟢🔵 du PRD (section 31) — mais jamais rendues en emoji à l'écran. Toujours un badge : pastille de 8px plus libellé texte (voir `StatusBadge` dans composants.md). Neutres additionnels : bordure `#DCE0DD`, texte secondaire `#5B6660`.
+Ces cinq niveaux reprennent les couleurs 🔴🟠🟡🟢🔵 du PRD (section 31) — mais jamais rendues en emoji à l'écran. Toujours un badge : pastille de 8px plus libellé texte (voir `StatusBadge` dans composants.md). Les variantes `-muted`/`-border` de ces 5 tons se calculent via `color-mix()` à partir de la teinte de base et de la surface courante plutôt que d'être codées en dur — elles restent lisibles sur fond sombre sans qu'on ait à les retuner une par une.
+
+Palette catégorielle (répartition en donut uniquement, voir plus bas — jamais réutilisée pour un statut) : `#4F8FF7` `#F2A341` `#C084FC` `#38BDAE` `#F26D8D` `#8FA8F2` `#D4C14F` `#6EE7B7`.
 
 ### Typographie
 
@@ -62,7 +74,10 @@ Charger ces polices via Google Fonts dans les artifacts HTML. En React, les déc
 
 ### Composants signature
 
-- **Jauges horizontales** avec graduations, jamais de jauge circulaire ni de donut chart — clin d'œil direct au vocabulaire de « pilotage ». Utilisées pour tout score : santé globale, dimension, risque, opportunité, confiance. Remplissage en dégradé `signal-fort → signal` plutôt qu'un aplat, animé à l'ouverture de l'écran (transform-origin gauche, ~1s, désactivé si `prefers-reduced-motion`).
+- **Jauges horizontales** avec graduations, jamais de jauge circulaire pour un score — clin d'œil direct au vocabulaire de « pilotage ». Utilisées pour tout score : santé globale, dimension, risque, opportunité, confiance. Remplissage en dégradé `signal-fort → signal` plutôt qu'un aplat, animé à l'ouverture de l'écran (transform-origin gauche, ~1s, désactivé si `prefers-reduced-motion`).
+- **Donut chart** : exception scopée à la répartition d'un tout en catégories (ex. dépenses par catégorie) — jamais pour un score. Palette catégorielle dédiée (voir Palette), jamais les couleurs de statut. Montant total au centre, en `font-mono`. Toujours accompagné d'une légende (pastille + nom + % + montant) et d'un repli accessible en tableau.
+- **Icônes contextuelles** : trait fin (stroke ~1.75, 20px), une par métrique/section (revenus, dépenses, résultat net, etc.) — jamais décoratives seules, toujours à côté d'un libellé qu'elles renforcent. Pas de bibliothèque externe : cohérent avec le reste de l'exécution (SVG fait main).
+- **Mini-tendance (sparkline)** dans une tuile de statistique : uniquement quand une vraie série quotidienne existe pour cette métrique précise — jamais une tendance inventée pour remplir une carte.
 - **Rail de statut** : bordure gauche de 4px dans la couleur sémantique, sur toute carte porteuse d'un état (alerte, tâche, recommandation).
 - **Badge de fiabilité** : chaque affirmation générée par le système (section 44 du PRD, « principes de confiance ») porte une étiquette discrète — FAIT / ANALYSE / HYPOTHÈSE / RECOMMANDATION / PRÉVISION — petites majuscules grises, jamais colorées, jamais omises. C'est une règle produit, pas une option de style : le PRD insiste sur le fait de ne jamais présenter une hypothèse comme une certitude. Ce badge reste gris neutre même dans la direction assouplie — ne jamais le colorer, même dans un souci d'harmonie visuelle.
 - **Chips de statut** (compteurs par sévérité, etc.) : fond dérivé de la couleur du texte elle-même (`color-mix(in srgb, currentColor 15%, transparent)`), jamais un blanc/noir fixe — condition pour rester lisible aussi bien en thème clair qu'en thème sombre.
@@ -71,7 +86,7 @@ Charger ces polices via Google Fonts dans les artifacts HTML. En React, les déc
 
 ### Layout
 
-Rail de navigation à gauche sur fond `nav` (`#17352A`, toujours sombre, indépendant du thème clair/sombre du contenu — c'est un élément d'identité fixe, pas une zone qui suit le thème), coin extérieur arrondi. Contenu sur fond papier, cartes en surface avec coins à 20–24px. Un écran d'accueil expose une idée dominante et trois priorités au maximum (section 47) ; les écrans de détail (KPI, rapports) peuvent être plus denses mais restent hiérarchisés — une information dominante par bloc, jamais une mosaïque de graphiques sans ordre de lecture.
+Rail de navigation à gauche sur fond `nav` (`#0E1A16`, toujours sombre, indépendant du thème clair/sombre du contenu — c'est un élément d'identité fixe, pas une zone qui suit le thème), coin extérieur arrondi, une icône par onglet. Contenu sur fond `encre-nuit`, cartes en `surface` avec coins à 20–24px. Un écran d'accueil expose une idée dominante et trois priorités au maximum (section 47) ; les écrans de détail (KPI, rapports) peuvent être plus denses et s'étaler sur plusieurs colonnes, mais restent hiérarchisés — une information dominante par bloc, jamais une mosaïque de graphiques sans ordre de lecture.
 
 ### Contrainte technique de cet environnement
 

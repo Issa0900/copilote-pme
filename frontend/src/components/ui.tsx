@@ -199,23 +199,42 @@ export function StatTile({
   label,
   value,
   tone,
+  icon,
+  chart,
 }: {
   label: string;
   value: string;
   tone?: Tone;
+  /** Icône contextuelle (voir components/icons.tsx), à gauche du libellé. */
+  icon?: ReactNode;
+  /** Slot pour une mini-tendance (NetTrendChart en mode compact) — réservé
+   * aux métriques qui ont une vraie série quotidienne, jamais une donnée
+   * inventée pour combler l'espace. */
+  chart?: ReactNode;
 }) {
   const valueClass = tone ? TONE_TEXT[tone] : "text-foreground";
   return (
     <div className="rounded-[20px] border border-border bg-surface p-4 shadow-sm transition-transform duration-200 ease-out hover:-translate-y-[3px] hover:scale-[1.02] hover:shadow-md">
-      <p className="text-xs text-foreground-muted">{label}</p>
+      <p className="flex items-center gap-1.5 text-xs text-foreground-muted">
+        {icon && <span className="text-foreground-muted/80">{icon}</span>}
+        {label}
+      </p>
       <p className={`mt-1 font-mono text-xl font-semibold ${valueClass}`}>{value}</p>
+      {chart && <div className="mt-2">{chart}</div>}
     </div>
   );
 }
 
-export function SectionHeading({ children }: { children: ReactNode }) {
+export function SectionHeading({
+  children,
+  icon,
+}: {
+  children: ReactNode;
+  icon?: ReactNode;
+}) {
   return (
-    <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+    <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+      {icon}
       {children}
     </h2>
   );

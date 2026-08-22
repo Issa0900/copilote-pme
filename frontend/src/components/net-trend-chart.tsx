@@ -10,16 +10,28 @@ const CHART_HEIGHT = 160;
 const TOP_PAD = 22; // room for the peak label above the highest point
 const BOTTOM_PAD = 18; // room for the baseline/legend area
 
-export function NetTrendChart({ data }: { data: Point[] }) {
+export function NetTrendChart({
+  data,
+  compact = false,
+}: {
+  data: Point[];
+  /** Version réduite pour un slot de sparkline (StatTile) : pas d'axe, pas de
+   * tooltip, pas de tableau — juste la ligne et le dégradé. Mêmes données
+   * réelles que la version complète, jamais de série inventée. */
+  compact?: boolean;
+}) {
   const [hovered, setHovered] = useState<number | null>(null);
   const gradientId = useId();
   const titleId = useId();
 
   if (data.length === 0) return null;
 
+  const height = compact ? 48 : CHART_HEIGHT;
+  const topPad = compact ? 4 : TOP_PAD;
+  const bottomPad = compact ? 4 : BOTTOM_PAD;
   const step = 100 / data.length;
-  const plotTop = TOP_PAD;
-  const plotBottom = CHART_HEIGHT - BOTTOM_PAD;
+  const plotTop = topPad;
+  const plotBottom = height - bottomPad;
 
   const values = data.map((d) => d.net);
   const dataMin = Math.min(...values);
@@ -54,7 +66,7 @@ export function NetTrendChart({ data }: { data: Point[] }) {
     .join(" ");
   const areaPath =
     points.length > 0
-      ? `${linePath} L${points[points.length - 1].x},${CHART_HEIGHT} L${points[0].x},${CHART_HEIGHT} Z`
+      ? `${linePath} L${points[points.length - 1].x},${height} L${points[0].x},${height} Z`
       : "";
 
   return (
@@ -62,9 +74,10 @@ export function NetTrendChart({ data }: { data: Point[] }) {
       <svg
         role="img"
         aria-labelledby={titleId}
-        viewBox={`0 0 100 ${CHART_HEIGHT}`}
+        viewBox={`0 0 100 ${height}`}
         preserveAspectRatio="none"
-        className="h-40 w-full overflow-visible"
+        className={compact ? "w-full overflow-visible" : "h-40 w-full overflow-visible"}
+        style={compact ? { height } : undefined}
       >
         <title id={titleId}>Résultat net par jour</title>
 
@@ -75,15 +88,17 @@ export function NetTrendChart({ data }: { data: Point[] }) {
           </linearGradient>
         </defs>
 
-        <line
-          x1={0}
-          x2={100}
-          y1={baselineY}
-          y2={baselineY}
-          stroke="var(--border)"
-          strokeWidth={1}
-          vectorEffect="non-scaling-stroke"
-        />
+        {!compact && (
+          <line
+            x1={0}
+            x2={100}
+            y1={baselineY}
+            y2={baselineY}
+            stroke="var(--border)"
+            strokeWidth={1}
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
 
         {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />}
 
@@ -92,96 +107,103 @@ export function NetTrendChart({ data }: { data: Point[] }) {
             d={linePath}
             fill="none"
             stroke="var(--accent-strong)"
-            strokeWidth={1.6}
+            strokeWidth={compact ? 1.8 : 1.6}
             strokeLinecap="round"
             strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
           />
         )}
 
-        <circle
-          cx={peak.x}
-          cy={peak.y}
-          r={2.4}
-          fill="var(--accent-strong)"
-          stroke="var(--surface)"
-          strokeWidth={1}
-          vectorEffect="non-scaling-stroke"
-        />
+        {!compact && (
+          <circle
+            cx={peak.x}
+            cy={peak.y}
+            r={2.4}
+            fill="var(--accent-strong)"
+            stroke="var(--surface)"
+            strokeWidth={1}
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
 
         {/* hit targets: one column per point, full chart height, bigger than
             the visible line so every point stays consultable at the mouse
             or via keyboard focus regardless of point density. */}
-        {points.map((p, i) => (
-          <rect
-            key={data[i].date}
-            x={i * step}
-            y={0}
-            width={step}
-            height={CHART_HEIGHT}
-            fill="transparent"
-            tabIndex={0}
-            role="button"
-            aria-label={`${formatDate(data[i].date)} : ${formatCurrency(data[i].net)}`}
-            onMouseEnter={() => setHovered(i)}
-            onMouseLeave={() => setHovered(null)}
-            onFocus={() => setHovered(i)}
-            onBlur={() => setHovered(null)}
-          />
-        ))}
+        {!compact &&
+          points.map((p, i) => (
+            <rect
+              key={data[i].date}
+              x={i * step}
+              y={0}
+              width={step}
+              height={height}
+              fill="transparent"
+              tabIndex={0}
+              role="button"
+              aria-label={`${formatDate(data[i].date)} : ${formatCurrency(data[i].net)}`}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+              onFocus={() => setHovered(i)}
+              onBlur={() => setHovered(null)}
+            />
+          ))}
       </svg>
 
-      <div className="mt-1.5 flex justify-between font-mono text-[11px] text-foreground-muted">
-        <span>{formatDate(data[0].date)}</span>
-        <span>
-          pic — {formatDate(data[peakIndex].date)} : {formatCurrency(data[peakIndex].net)}
-        </span>
-        <span>{formatDate(data[data.length - 1].date)}</span>
-      </div>
-
-      <div className="relative h-6">
-        {hovered !== null && (
-          <div
-            className="pointer-events-none absolute -top-1 z-10 -translate-x-1/2 rounded-lg border border-border bg-surface px-2 py-1 text-xs shadow-md"
-            style={{
-              left: `${hovered * step + step / 2}%`,
-            }}
-          >
-            <span className="font-mono font-semibold">
-              {formatCurrency(data[hovered].net)}
-            </span>{" "}
-            <span className="font-mono text-foreground-muted">
-              {formatDate(data[hovered].date)}
+      {!compact && (
+        <>
+          <div className="mt-1.5 flex justify-between font-mono text-[11px] text-foreground-muted">
+            <span>{formatDate(data[0].date)}</span>
+            <span>
+              pic — {formatDate(data[peakIndex].date)} : {formatCurrency(data[peakIndex].net)}
             </span>
+            <span>{formatDate(data[data.length - 1].date)}</span>
           </div>
-        )}
-      </div>
 
-      <details className="mt-2">
-        <summary className="cursor-pointer text-xs text-foreground-muted">
-          Voir en tableau
-        </summary>
-        <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-border">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-surface-muted">
-              <tr>
-                <th className="px-3 py-1.5 text-left font-medium">Date</th>
-                <th className="px-3 py-1.5 text-right font-medium">Résultat net</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((d) => (
-                <tr key={d.date} className="border-t border-border">
-                  <td className="px-3 py-1.5 font-mono">{formatDate(d.date)}</td>
-                  <td className="px-3 py-1.5 text-right font-mono tabular-nums">
-                    {formatCurrency(d.net)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+          <div className="relative h-6">
+            {hovered !== null && (
+              <div
+                className="pointer-events-none absolute -top-1 z-10 -translate-x-1/2 rounded-lg border border-border bg-surface px-2 py-1 text-xs shadow-md"
+                style={{
+                  left: `${hovered * step + step / 2}%`,
+                }}
+              >
+                <span className="font-mono font-semibold">
+                  {formatCurrency(data[hovered].net)}
+                </span>{" "}
+                <span className="font-mono text-foreground-muted">
+                  {formatDate(data[hovered].date)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs text-foreground-muted">
+              Voir en tableau
+            </summary>
+            <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-border">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-surface-muted">
+                  <tr>
+                    <th className="px-3 py-1.5 text-left font-medium">Date</th>
+                    <th className="px-3 py-1.5 text-right font-medium">Résultat net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((d) => (
+                    <tr key={d.date} className="border-t border-border">
+                      <td className="px-3 py-1.5 font-mono">{formatDate(d.date)}</td>
+                      <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+                        {formatCurrency(d.net)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </>
+      )}
     </div>
   );
 }

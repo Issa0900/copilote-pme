@@ -23,7 +23,7 @@ export function ReportTabs({ companyId }: { companyId: string }) {
             key={tab.href}
             href={href}
             aria-current={isActive ? "page" : undefined}
-            className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            className={`flex min-h-11 min-w-11 items-center whitespace-nowrap rounded-full px-3.5 py-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               isActive
                 ? "bg-accent-muted text-accent"
                 : "text-foreground-muted hover:bg-surface-muted hover:text-foreground"
