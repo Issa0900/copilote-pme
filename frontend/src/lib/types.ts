@@ -12,6 +12,7 @@ export type Import = {
   id: string;
   company_id: string;
   source_type: string;
+  profile: string;
   file_name: string;
   uploaded_at: string;
   status: string;
@@ -19,6 +20,18 @@ export type Import = {
   rows_processed: number;
   rows_quarantined: number;
   error_message: string | null;
+};
+
+export type Transaction = {
+  id: string;
+  company_id: string;
+  import_id: string;
+  date: string | null;
+  amount: number | null;
+  category: string | null;
+  description: string | null;
+  status: string;
+  quarantine_reasons: string[] | null;
 };
 
 export type CompanyKpis = {
