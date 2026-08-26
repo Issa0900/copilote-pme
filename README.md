@@ -1,5 +1,8 @@
 # Copilote PME
 
+[![Backend tests](https://github.com/Issa0900/copilote-pme/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/Issa0900/copilote-pme/actions/workflows/backend-tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Système intelligent de pilotage, d'anticipation et d'aide à la décision pour petites entreprises.
 
 > Projet personnel — conception produit (PRD complet) et développement d'un MVP full-stack.
