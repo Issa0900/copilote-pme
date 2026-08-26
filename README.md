@@ -89,4 +89,10 @@ Projet en développement actif. Le MVP (Phase 1 de la roadmap) couvre : configur
 
 ---
 
-Ce projet a été conçu et développé comme exercice personnel de bout en bout : cadrage produit, architecture technique, et implémentation full-stack.
+## Décisions clés
+
+- **Modèle de données** : entreprises, imports, transactions, anomalies et recommandations comme entités séparées, pour permettre l'ajout de nouvelles sources d'ingestion sans toucher au moteur de détection.
+- **Étiquetage de certitude** (fait / analyse / hypothèse / recommandation / prévision) sur chaque insight — un choix de produit pour éviter qu'une PME confonde une hypothèse avec un fait établi.
+- **Ingestion multi-format découplée du moteur d'analyse**, pour que l'ajout d'un nouveau format de fichier n'exige pas de retoucher la détection d'anomalies.
+
+Développé de bout en bout : cadrage produit (PRD, charte de projet), architecture technique, implémentation full-stack et suite de tests.
