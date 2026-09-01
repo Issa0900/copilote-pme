@@ -25,3 +25,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local test data
+donnees_commerciales_test_scenario2.csv
