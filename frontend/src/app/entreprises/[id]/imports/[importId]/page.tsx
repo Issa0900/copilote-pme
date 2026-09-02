@@ -167,6 +167,29 @@ export default async function ImportTransactionsPage({
                         ))}
                       </div>
                     )}
+                    {/* Le motif nomme la CATÉGORIE du problème ("date
+                        manquante ou illisible") sans jamais montrer la
+                        valeur qui a fait échouer le parsing — repliée par
+                        défaut (potentiellement de nombreuses colonnes), mais
+                        nécessaire pour vérifier ou corriger sans rouvrir le
+                        fichier source. */}
+                    {t.raw_data && Object.keys(t.raw_data).length > 0 && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-foreground-muted">
+                          Voir les valeurs brutes de la ligne
+                        </summary>
+                        <dl className="mt-1.5 space-y-0.5 text-xs">
+                          {Object.entries(t.raw_data).map(([column, value]) => (
+                            <div key={column} className="flex gap-2">
+                              <dt className="shrink-0 font-medium text-foreground-muted">
+                                {column} :
+                              </dt>
+                              <dd className="font-mono">{value ?? "—"}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </details>
+                    )}
                   </Card>
                 ))}
               </ul>

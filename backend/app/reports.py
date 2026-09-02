@@ -141,8 +141,20 @@ def _generate_report_content(
     )
     recs = sorted(recs, key=lambda r: PRIORITY_RANK.get(r.priority, 9))
 
+    # `analysis`/`impact`/`action` en plus de `situation`/`priority` : un
+    # rapport est un instantané figé censé se lire seul (docstring du
+    # module), il ne doit pas constater un risque sans dire pourquoi ni quoi
+    # faire — ces champs existent déjà sur `Recommendation`, ils étaient
+    # simplement laissés de côté ici.
     top_risks = [
-        {"situation": r.situation, "priority": r.priority} for r in recs[:TOP_RISKS_COUNT]
+        {
+            "situation": r.situation,
+            "priority": r.priority,
+            "analysis": r.analysis,
+            "impact": r.impact,
+            "action": r.action,
+        }
+        for r in recs[:TOP_RISKS_COUNT]
     ]
     top_actions = [r.action for r in recs[:TOP_ACTIONS_COUNT]]
 

@@ -41,8 +41,24 @@ def _compute_company_alerts(company_id: uuid.UUID, db: Session) -> list[Alert]:
     )
     imports = db.query(Import).filter(Import.company_id == company_id).all()
 
+    # Motifs de quarantaine par import (spec §64.13 : une alerte doit dire
+    # clairement le problème, pas seulement son compte) — requête séparée des
+    # transactions validées ci-dessus, `Transaction.status` filtre les deux
+    # populations différemment.
+    quarantined = (
+        db.query(Transaction)
+        .filter(Transaction.company_id == company_id, Transaction.status == "quarantined")
+        .all()
+    )
+    quarantined_by_import: dict[uuid.UUID, list[Transaction]] = {}
+    for t in quarantined:
+        quarantined_by_import.setdefault(t.import_id, []).append(t)
+
     anomalies = detect_anomalies(transactions, target_margin_pct=float(company.target_margin_pct))
-    return sort_alerts(alerts_from_anomalies(anomalies) + alerts_from_imports(imports))
+    return sort_alerts(
+        alerts_from_anomalies(anomalies)
+        + alerts_from_imports(imports, quarantined_by_import)
+    )
 
 
 @router.get("/alerts", response_model=list[AlertRead])
@@ -77,6 +93,9 @@ def get_company_alerts(
             source=a.source,
             source_id=a.source_id,
             category=a.category,
+            why=a.why,
+            impact_amount=a.impact_amount,
+            action=a.action,
         )
         for a in alerts
     ]

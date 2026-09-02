@@ -363,3 +363,31 @@ def test_margin_decline_defaults_target_when_not_provided():
     txns = _margin_txns(1000, 700, 1000, 850)  # recent margin 15 % < 20 %
     anomalies = [a for a in detect_anomalies(txns) if a.type == "margin_decline"]
     assert len(anomalies) == 1
+
+
+def test_margin_decline_names_top_contributing_category():
+    # Deux catégories de dépense bougent : Fournitures pèse nettement plus
+    # que Marketing sur le recul du résultat net (+300 $ vs -50 $), elle doit
+    # donc être citée en premier dans le message/l'action, pas juste "la
+    # marge a baissé" sans dire où regarder.
+    txns = [
+        _txn(1000, category="Ventes", d=date(2024, 1, 1)),
+        _txn(-400, category="Fournitures", d=date(2024, 1, 2)),
+        _txn(-300, category="Marketing", d=date(2024, 1, 3)),
+        _txn(1000, category="Ventes", d=date(2024, 6, 1)),
+        _txn(-700, category="Fournitures", d=date(2024, 6, 2)),
+        _txn(-250, category="Marketing", d=date(2024, 6, 3)),
+    ]
+    anomalies = [
+        a for a in detect_anomalies(txns, target_margin_pct=20) if a.type == "margin_decline"
+    ]
+    assert len(anomalies) == 1
+    a = anomalies[0]
+    contributors = a.metadata["contributors"]
+    assert contributors[0]["category"] == "Fournitures"
+    assert contributors[0]["delta"] == -300.0
+    assert contributors[0]["share_of_change_pct"] == 120.0
+    assert "Fournitures" in a.message
+    assert "Fournitures" in a.action
+    assert "facteur associé" in a.why  # jamais présenté comme une cause certaine
+    assert "facteur associé" in a.why  # jamais présenté comme une cause certaine

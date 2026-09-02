@@ -341,6 +341,13 @@ class AlertRead(BaseModel):
     source_id: str | None
     category: str | None
 
+    # « Quoi / Pourquoi / Impact / Action » (spec §51/§64.13) — remplis pour
+    # une alerte venant d'une anomalie, `None` pour une alerte venant d'un
+    # import (son `message` porte déjà tout le raisonnement disponible).
+    why: str | None = None
+    impact_amount: float | None = None
+    action: str | None = None
+
 
 class AlertSummaryItem(BaseModel):
     level: str
@@ -359,3 +366,9 @@ class TransactionRead(BaseModel):
     description: str | None
     status: str
     quarantine_reasons: list[str] | None
+    # Valeurs brutes des colonnes du fichier source pour cette ligne, telles
+    # que lues avant normalisation (ingestion.py). Sans elle, `quarantine_reasons`
+    # nomme la CATÉGORIE du problème ("date manquante ou illisible") sans jamais
+    # montrer la valeur qui a fait échouer le parsing — impossible de vérifier
+    # ou de corriger sans rouvrir le fichier d'origine.
+    raw_data: dict[str, str | None] | None = None

@@ -113,10 +113,9 @@ SQLAlchemy 2.0 models in `backend/app/models.py`, migrations in `backend/alembic
 
 ## Where the work stands (updated 2026-09-02)
 
-Backend suite: **192 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work.
+Backend suite: **199 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work.
 
-Lots 1 and 2 below are committed and pushed on `fix/audit-mvp-lot-1` (PR #4, not yet merged). Lot 3 is
-uncommitted at time of writing.
+Lots 1-3 below are merged into `main` (PR #4). Lot 4 is uncommitted at time of writing.
 
 ### Known defects, found by auditing the calculation logic against real demo data
 
@@ -236,6 +235,49 @@ that no longer existed; `Get-CimInstance Win32_Process -Filter "Name like '%pyth
 actually found the live orphan (its `CommandLine` names the `parent_pid`). Worth reaching for that command
 directly next time instead of re-diagnosing from Bash-side `netstat`/`tasklist` output, which was misleading
 here.
+
+### Lot 4: the "explain, don't just report" promise was broken in several places
+
+Prompted by Issa testing the margin-decline alert (lot 3) and finding it didn't say *why* the margin moved —
+followed by a request to audit the whole app as a decision-support tool, not just the calculation layer. The
+useful frame that came out of that: Gescop's decision loop is **Détecter → Comprendre → Décider → Agir →
+Mesurer** (spec §64.27). Détecter is solid; **Agir/Mesurer don't exist at all** (no Action entity — see
+`recommendations.py`'s own docstring on Module 20 — this is the single biggest gap in the product, flagged
+but *not* addressed in this lot, it needs its own dedicated scoping); **Comprendre** turned out to be broken
+in four separate places, all in the same shape — a domain module computes a real explanation, then a
+downstream layer (a dataclass, a schema, an aggregation step) drops it before it reaches the screen:
+
+1. **`app/alerts.py` — the dedicated Alertes screen showed less than the dashboard for the exact same data.**
+   `detect_anomalies()` computes `why`/`impact_amount`/`action` per anomaly; `GET /anomalies` (dashboard)
+   preserved them, but `GET /alerts` didn't — `Alert` (dataclass), `AlertRead` (schema), and the frontend
+   `Alert` type all stopped at `level/title/message/source/source_id/category`. Fixed by adding
+   `why`/`impact_amount`/`action` through all three layers plus `alertes/page.tsx` (new `AlertReasoning`
+   helper, used for both single and grouped-alert cards).
+2. **The margin-decline rule (lot 3) didn't name a category, unlike the other two rules.** Added
+   `_profit_contributors_by_category(recent, earlier)` in `app/anomalies.py` — sums `Transaction.amount`
+   (already signed) per category on each window, diffs, keeps up to 2 categories above a 5 % share of the
+   total movement (same threshold as `variance.py::MIN_SHARE_PCT`). Wired into `_detect_margin_decline`'s
+   message/why/action/metadata and into `recommendations.py::_impact_and_action`. Wording stays "facteur
+   associé", never "cause" — same caveat as `variance.py`, the model still has no supplier/product link.
+3. **`app/reports.py`'s "risques" section dropped `analysis`/`impact` from the underlying `Recommendation`.**
+   Only `situation`/`priority` survived into `top_risks` — no comment justified it (unlike the deliberately
+   empty opportunités/actualités/automatisations sections, which *are* documented). A report is meant to
+   stand alone without the live dashboard; now it does. Note this only shows up live on a report that still
+   recomputes (weekly/monthly before their period closes, or a freshly-generated daily one) — an
+   already-persisted daily report stays frozen in its old shape, which is correct (reports.py's own
+   documented contract), not a sign the fix didn't work.
+4. **The quarantine alert gave a bare count, never the reasons.** `alerts_from_imports` now accepts an
+   optional `quarantined_by_import` map (built by the router from a second, separate query — quarantined
+   rows aren't in the "validated" query already fetched for anomaly detection) and appends a frequency-sorted
+   breakdown ("Motifs : 6 date_invalide, 5 montant_invalide") to the message.
+5. **A quarantined transaction named the problem but never the evidence.** `TransactionRead` gained
+   `raw_data` (already stored per-row since ingestion, `ingestion.py:465`, just never exposed) — rendered
+   as a collapsed `<details>` block in `imports/[importId]/page.tsx`, next to the `quarantine_reasons` badges.
+
+One candidate finding turned out to be already mitigated, not a gap: `CompanyKpis.average_sale` carries a
+long caveat in a Python comment but nothing in the API schema — the frontend already hardcodes the same
+caveat as a static note + `TrustBadge level="hypothese"` on the Panier moyen card (lot 1, item 4). Nothing to
+do there.
 
 ### Deliberate deviations from the older docs
 

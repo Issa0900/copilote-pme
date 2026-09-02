@@ -378,6 +378,63 @@ def _net_margin_pct(transactions: list[Transaction]) -> float | None:
     return (revenue - expenses) / revenue * 100
 
 
+# Un mouvement de quelques dollars sur une catégorie marginale n'explique
+# rien ; l'inclure diluerait les vrais facteurs. Même seuil que
+# `variance.py::MIN_SHARE_PCT`, pour rester cohérent avec l'autre endroit du
+# produit qui répond à la même question (« qu'est-ce qui explique ce
+# mouvement ? »).
+MARGIN_CONTRIBUTOR_MIN_SHARE_PCT = 5.0
+MAX_MARGIN_CONTRIBUTORS = 2
+
+
+def _profit_contributors_by_category(
+    recent: list[Transaction], earlier: list[Transaction]
+) -> list[tuple[str, float, float]]:
+    """Repère quelles catégories portent le recul de résultat net entre les
+    deux fenêtres déjà découpées par `_detect_margin_decline` — même
+    principe que `variance.py::compute_kpi_variance` (part du mouvement
+    total par catégorie), mais calculé en Python sur les transactions déjà
+    chargées : ce module n'a pas de session DB, et revenus/dépenses d'une
+    catégorie n'ont pas besoin d'être séparés ici puisque `Transaction.amount`
+    est déjà signé (revenu positif, dépense négatif) — sommer par catégorie
+    donne directement sa contribution nette au résultat.
+
+    Ce n'est PAS une analyse causale (cf. `variance.py`, même mise en garde) :
+    savoir qu'une catégorie porte le recul ne dit pas pourquoi elle a bougé.
+    Retourne au plus `MAX_MARGIN_CONTRIBUTORS` tuples
+    (catégorie, delta $, part du recul en %), triés par part décroissante,
+    limités aux catégories dont la part dépasse
+    `MARGIN_CONTRIBUTOR_MIN_SHARE_PCT`."""
+
+    def _totals(txns: list[Transaction]) -> dict[str, float]:
+        totals: dict[str, float] = {}
+        for t in txns:
+            if not t.category or t.amount is None:
+                continue
+            totals[t.category] = totals.get(t.category, 0.0) + float(t.amount)
+        return totals
+
+    recent_totals = _totals(recent)
+    earlier_totals = _totals(earlier)
+
+    total_delta = sum(recent_totals.values()) - sum(earlier_totals.values())
+    if total_delta == 0:
+        return []
+
+    contributors: list[tuple[str, float, float]] = []
+    for category in set(recent_totals) | set(earlier_totals):
+        cat_delta = recent_totals.get(category, 0.0) - earlier_totals.get(category, 0.0)
+        if cat_delta == 0:
+            continue
+        share = (cat_delta / total_delta) * 100
+        contributors.append((category, cat_delta, share))
+
+    contributors.sort(key=lambda c: abs(c[2]), reverse=True)
+    return [
+        c for c in contributors if abs(c[2]) >= MARGIN_CONTRIBUTOR_MIN_SHARE_PCT
+    ][:MAX_MARGIN_CONTRIBUTORS]
+
+
 def _margin_severity(gap_to_target: float, change: float) -> str:
     if gap_to_target >= 10 or change <= -8:
         return "high"
@@ -444,6 +501,30 @@ def _detect_margin_decline(
     impact = round(recent_revenue * change / 100, 2)
     gap_to_target = target_margin_pct - current_margin
 
+    # Quelles catégories portent le mouvement (spec §18 : « expliquer,
+    # contextualiser » vient après la détection). Sans ça, l'anomalie ne
+    # faisait que constater le chiffre sans dire où regarder — la carte
+    # « Marge en baisse » et la carte « Fournitures +77 % » à côté d'elle
+    # restaient deux faits disjoints que l'utilisateur devait relier
+    # lui-même.
+    contributors = _profit_contributors_by_category(recent, earlier)
+    if contributors:
+        contributor_txt = " Catégories les plus associées à ce mouvement : " + ", ".join(
+            f"{category} ({delta:+.0f} $, {share:+.0f} % du mouvement)"
+            for category, delta, share in contributors
+        ) + "."
+        top_category = contributors[0][0]
+        action = (
+            f"Examiner les transactions en catégorie « {top_category} » sur "
+            "cette période : c'est ce qui pèse le plus sur le résultat net."
+        )
+    else:
+        contributor_txt = ""
+        action = (
+            "Vérifier les postes de revenus et de dépenses qui ont fait "
+            "bouger la marge sur cette période."
+        )
+
     return [
         Anomaly(
             type="margin_decline",
@@ -452,23 +533,39 @@ def _detect_margin_decline(
                 f"La marge nette est de {current_margin:.1f} % (objectif : "
                 f"{target_margin_pct:.1f} %), en baisse de {abs(change):.1f} points "
                 f"par rapport à {comparison_txt} ({previous_margin:.1f} %)."
+                f"{contributor_txt}"
             ),
             detected_at=period_end if has_period else max(t.date for t in dated),
             why=(
                 "Règle déterministe (spec §12/§18) : marge nette sous l'objectif "
                 f"et en baisse d'au moins {MARGIN_DECLINE_THRESHOLD_POINTS:.0f} "
                 f"points par rapport à {comparison_txt}."
+                + (
+                    " Les catégories citées sont celles qui portent le plus le "
+                    "mouvement du résultat net entre les deux fenêtres (même "
+                    "principe que l'analyse d'écarts du tableau de bord, "
+                    "variance.py) — un facteur associé au mouvement, jamais une "
+                    "cause identifiée : le modèle ne relie pas encore une "
+                    "transaction à un fournisseur ou un client."
+                    if contributors
+                    else ""
+                )
             ),
             impact_amount=impact,
-            action=(
-                "Vérifier les postes de revenus et de dépenses qui ont fait "
-                "bouger la marge sur cette période."
-            ),
+            action=action,
             metadata={
                 "current_margin_pct": round(current_margin, 1),
                 "previous_margin_pct": round(previous_margin, 1),
                 "target_margin_pct": round(target_margin_pct, 1),
                 "change_pct_points": round(change, 1),
+                "contributors": [
+                    {
+                        "category": category,
+                        "delta": round(delta, 2),
+                        "share_of_change_pct": round(share, 1),
+                    }
+                    for category, delta, share in contributors
+                ],
             },
         )
     ]

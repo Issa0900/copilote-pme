@@ -13,10 +13,12 @@ disponibles pour l'instant — pas d'état persistant (lu/résolu), pas de
 canal de notification (Module 32, non implémenté).
 """
 
+import uuid
+from collections import Counter
 from dataclasses import dataclass
 
 from app.anomalies import Anomaly
-from app.models import Import
+from app.models import Import, Transaction
 
 QUARANTINE_RATIO_IMPORTANT = 0.3
 
@@ -37,6 +39,14 @@ class Alert:
     source: str  # "anomaly" | "import"
     source_id: str | None = None
     category: str | None = None
+    # Quoi/Pourquoi/Impact/Action (spec §51/§64.13) — remplis pour les alertes
+    # venant d'une anomalie (`why`/`impact_amount`/`action` de l'`Anomaly`
+    # source), `None` pour celles venant d'un import : un import échoué ou en
+    # quarantaine n'a pas ce quadruplet, son `message` porte déjà tout le
+    # raisonnement disponible.
+    why: str | None = None
+    impact_amount: float | None = None
+    action: str | None = None
 
 
 def alerts_from_anomalies(anomalies: list[Anomaly]) -> list[Alert]:
@@ -53,12 +63,24 @@ def alerts_from_anomalies(anomalies: list[Anomaly]) -> list[Alert]:
             source="anomaly",
             source_id=a.transaction_id,
             category=a.category,
+            why=a.why,
+            impact_amount=a.impact_amount,
+            action=a.action,
         )
         for a in anomalies
     ]
 
 
-def alerts_from_imports(imports: list[Import]) -> list[Alert]:
+def alerts_from_imports(
+    imports: list[Import],
+    quarantined_by_import: dict[uuid.UUID, list[Transaction]] | None = None,
+) -> list[Alert]:
+    """``quarantined_by_import`` : transactions en quarantaine de chaque import,
+    indexées par ``import.id`` — optionnel pour ne pas casser un appelant qui
+    n'a chargé que les imports. Sans elle, le message de quarantaine reste au
+    seul compte (comportement historique) ; avec elle, il détaille les motifs
+    (spec §64.13 : « une alerte indique clairement le problème »)."""
+    quarantined_by_import = quarantined_by_import or {}
     alerts: list[Alert] = []
     for imp in imports:
         if imp.status == "echoue":
@@ -77,15 +99,33 @@ def alerts_from_imports(imports: list[Import]) -> list[Alert]:
         if imp.rows_quarantined > 0 and imp.rows_processed > 0:
             ratio = imp.rows_quarantined / imp.rows_processed
             level = "important" if ratio > QUARANTINE_RATIO_IMPORTANT else "surveillance"
+            message = (
+                f"{imp.rows_quarantined} ligne(s) sur {imp.rows_processed} de "
+                f"l'import « {imp.file_name} » sont en attente de vérification et "
+                f"exclues des KPI tant qu'elles ne sont pas validées."
+            )
+            quarantined = quarantined_by_import.get(imp.id, [])
+            reason_counts = Counter(
+                reason
+                for t in quarantined
+                for reason in (t.quarantine_reasons or [])
+            )
+            if reason_counts:
+                # Tri par fréquence décroissante : le motif le plus courant en
+                # premier, c'est celui qui vaut la peine d'être vérifié dans le
+                # fichier source en priorité.
+                breakdown = ", ".join(
+                    f"{count} {reason}"
+                    for reason, count in sorted(
+                        reason_counts.items(), key=lambda kv: kv[1], reverse=True
+                    )
+                )
+                message += f" Motifs : {breakdown}."
             alerts.append(
                 Alert(
                     level=level,
                     title="Données à valider",
-                    message=(
-                        f"{imp.rows_quarantined} ligne(s) sur {imp.rows_processed} de "
-                        f"l'import « {imp.file_name} » sont en attente de vérification et "
-                        f"exclues des KPI tant qu'elles ne sont pas validées."
-                    ),
+                    message=message,
                     source="import",
                     source_id=str(imp.id),
                 )

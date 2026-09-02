@@ -11,7 +11,7 @@ from app.alerts import (
     summarize_alerts,
 )
 from app.anomalies import Anomaly
-from app.models import Import
+from app.models import Import, Transaction
 
 
 def _import(rows_processed, rows_quarantined, status="complete", error_message=None):
@@ -47,6 +47,75 @@ def test_alerts_from_anomalies_keeps_category():
     ]
     alerts = alerts_from_anomalies(anomalies)
     assert [a.category for a in alerts] == ["Salaires", "Ventes", None]
+
+
+def test_alerts_from_anomalies_keeps_why_impact_action():
+    # Quoi/Pourquoi/Impact/Action (spec §51/§64.13) doit survivre jusqu'à
+    # l'Alert — c'est le trou qui faisait passer l'écran Alertes pour moins
+    # explicatif que le tableau de bord (même donnée source, deux chemins).
+    anomalies = [
+        Anomaly(
+            type="margin_decline",
+            severity="high",
+            message="La marge nette est de 10.8 %...",
+            why="Règle déterministe...",
+            impact_amount=-8799.09,
+            action="Examiner les transactions en catégorie « Fournitures »...",
+        )
+    ]
+    alerts = alerts_from_anomalies(anomalies)
+    assert len(alerts) == 1
+    assert alerts[0].why == "Règle déterministe..."
+    assert alerts[0].impact_amount == -8799.09
+    assert alerts[0].action.startswith("Examiner")
+
+
+def test_alerts_from_imports_why_impact_action_are_none():
+    # Une alerte d'import n'a pas ce quadruplet : `message` porte déjà tout
+    # le raisonnement disponible pour cette source.
+    alerts = alerts_from_imports([_import(0, 0, status="echoue", error_message="boom")])
+    assert alerts[0].why is None
+    assert alerts[0].impact_amount is None
+    assert alerts[0].action is None
+
+
+def _quarantined_txn(import_id, reasons):
+    return Transaction(
+        id=uuid.uuid4(),
+        company_id=uuid.uuid4(),
+        import_id=import_id,
+        status="quarantined",
+        quarantine_reasons=reasons,
+        raw_data={},
+    )
+
+
+def test_alerts_from_imports_reports_quarantine_reasons_breakdown():
+    imp = _import(rows_processed=10, rows_quarantined=3)
+    quarantined_by_import = {
+        imp.id: [
+            _quarantined_txn(imp.id, ["date manquante ou illisible"]),
+            _quarantined_txn(imp.id, ["date manquante ou illisible"]),
+            _quarantined_txn(imp.id, ["montant manquant ou illisible"]),
+        ]
+    }
+    alerts = alerts_from_imports([imp], quarantined_by_import)
+    assert len(alerts) == 1
+    message = alerts[0].message
+    # Motif le plus fréquent d'abord.
+    assert "2 date manquante ou illisible" in message
+    assert "1 montant manquant ou illisible" in message
+    assert message.index("2 date") < message.index("1 montant")
+
+
+def test_alerts_from_imports_without_breakdown_keeps_count_only_message():
+    # Sans `quarantined_by_import` (comportement historique — un appelant qui
+    # n'a chargé que les imports), le message reste au seul compte, pas de
+    # `KeyError`/`AttributeError`.
+    imp = _import(rows_processed=10, rows_quarantined=3)
+    alerts = alerts_from_imports([imp])
+    assert len(alerts) == 1
+    assert "Motifs" not in alerts[0].message
 
 
 def test_alerts_from_imports_category_is_always_none():
@@ -146,3 +215,52 @@ def test_get_company_alerts_exposes_category_field(
     import_alerts = [a for a in alerts if a["source"] == "import"]
     assert import_alerts
     assert all(a["category"] is None for a in import_alerts)
+
+
+def test_get_company_alerts_exposes_why_impact_action_and_quarantine_reasons(
+    authed_client, make_import, make_transaction
+):
+    client, _user, company = authed_client
+    imp = make_import(company.id)
+
+    for i in range(1, 9):
+        make_transaction(
+            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 1, i)
+        )
+    for _ in range(12):
+        make_transaction(
+            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 6, 15)
+        )
+    outlier = make_transaction(
+        company.id, imp.id, amount=-10_000, category="Salaires", date=date(2024, 6, 15)
+    )
+
+    quarantined_import = make_import(company.id, rows_processed=2, rows_quarantined=2)
+    make_transaction(
+        company.id,
+        quarantined_import.id,
+        status="quarantined",
+        quarantine_reasons=["date manquante ou illisible"],
+    )
+    make_transaction(
+        company.id,
+        quarantined_import.id,
+        status="quarantined",
+        quarantine_reasons=["date manquante ou illisible"],
+    )
+
+    resp = client.get(f"/companies/{company.id}/alerts")
+    assert resp.status_code == 200
+    alerts = resp.json()
+
+    outlier_alerts = [a for a in alerts if a["source_id"] == str(outlier.id)]
+    assert len(outlier_alerts) == 1
+    assert outlier_alerts[0]["why"]
+    assert outlier_alerts[0]["action"]
+
+    quarantine_alerts = [
+        a for a in alerts if a["source_id"] == str(quarantined_import.id)
+    ]
+    assert len(quarantine_alerts) == 1
+    assert "2 date manquante ou illisible" in quarantine_alerts[0]["message"]
+    assert quarantine_alerts[0]["why"] is None
