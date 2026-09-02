@@ -1,6 +1,7 @@
 import uuid
+from datetime import date as date_type
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.anomalies import detect_anomalies
@@ -25,17 +26,24 @@ def _get_company_or_404(company_id: uuid.UUID, db: Session) -> Company:
 
 @router.get("/anomalies", response_model=list[AnomalyRead])
 def get_company_anomalies(
-    company_id: uuid.UUID, db: Session = Depends(get_db)
+    company_id: uuid.UUID,
+    start_date: date_type | None = Query(None),
+    end_date: date_type | None = Query(None),
+    db: Session = Depends(get_db),
 ) -> list[AnomalyRead]:
     _get_company_or_404(company_id, db)
 
+    # Toujours l'historique complet validé : le détecteur a besoin de
+    # données antérieures à `start_date` pour sa baseline statistique, c'est
+    # lui (via `period_start`/`period_end`) qui scope ses résultats "recent"
+    # à la période choisie, pas cette requête.
     transactions = (
         db.query(Transaction)
         .filter(Transaction.company_id == company_id, Transaction.status == "validated")
         .all()
     )
 
-    anomalies = detect_anomalies(transactions)
+    anomalies = detect_anomalies(transactions, period_start=start_date, period_end=end_date)
     return [
         AnomalyRead(
             type=a.type,

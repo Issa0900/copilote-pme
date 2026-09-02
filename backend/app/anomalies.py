@@ -103,20 +103,48 @@ def _trend_severity(change: float) -> str:
     return "low"
 
 
-def _detect_category_outlier_clusters(transactions: list[Transaction]) -> list[Anomaly]:
+def _detect_category_outlier_clusters(
+    transactions: list[Transaction],
+    *,
+    period_start: date | None = None,
+    period_end: date | None = None,
+) -> list[Anomaly]:
     dated = [t for t in transactions if t.date is not None and t.category and t.amount]
     if not dated:
         return []
 
-    anchor = max(t.date for t in dated)
-    window_start = anchor - timedelta(days=RECENT_WINDOW_DAYS)
+    if period_start is not None and period_end is not None:
+        # Fenêtre "recent" = la période réellement sélectionnée au tableau de
+        # bord, pas une fenêtre glissante de 30 jours ancrée sur la donnée.
+        # La baseline, elle, reste TOUTE l'historique antérieure à
+        # `period_start` reçue en entrée — une fenêtre "période précédente"
+        # de même durée serait souvent trop courte pour atteindre
+        # MIN_BASELINE_SAMPLE et casserait la robustesse statistique du
+        # calcul médiane/MAD. Ce choix mélange donc volontairement une
+        # fenêtre de comparaison calendaire précise pour "recent" avec un
+        # historique complet pour "baseline", par nécessité statistique.
+        anchor = period_end
+        window_start = period_start
+    else:
+        anchor = max(t.date for t in dated)
+        window_start = anchor - timedelta(days=RECENT_WINDOW_DAYS)
 
     groups: dict[tuple[str, str], dict[str, list]] = {}
     for t in dated:
         sign = "revenu" if t.amount > 0 else "depense"
         key = (t.category, sign)
         bucket = groups.setdefault(key, {"baseline": [], "recent": []})
-        target = "recent" if t.date >= window_start else "baseline"
+        if period_start is not None and period_end is not None:
+            if window_start <= t.date <= anchor:
+                target = "recent"
+            elif t.date < window_start:
+                target = "baseline"
+            else:
+                # Transaction postérieure à la période sélectionnée : hors
+                # champ, ni recent ni baseline.
+                continue
+        else:
+            target = "recent" if t.date >= window_start else "baseline"
         bucket[target].append(t)
 
     subjects = {
@@ -204,19 +232,49 @@ def _detect_category_outlier_clusters(transactions: list[Transaction]) -> list[A
     return anomalies
 
 
-def _detect_category_trends(transactions: list[Transaction]) -> list[Anomaly]:
+def _detect_category_trends(
+    transactions: list[Transaction],
+    *,
+    period_start: date | None = None,
+    period_end: date | None = None,
+) -> list[Anomaly]:
     dated = [t for t in transactions if t.date is not None and t.category]
     if len(dated) < MIN_PER_PERIOD_FOR_TREND * 2:
         return []
 
-    sorted_dates = sorted(t.date for t in dated)
-    median_date = sorted_dates[len(sorted_dates) // 2]
+    has_period = period_start is not None and period_end is not None
+    if has_period:
+        # Vraie période calendaire sélectionnée : "recent" = la période
+        # demandée, "earlier" = la période précédente immédiatement
+        # contiguë de même durée (même formule que
+        # `dashboard.py::get_company_kpis_variance`).
+        span = period_end - period_start
+        previous_end = period_start - timedelta(days=1)
+        previous_start = previous_end - span
 
-    by_category: dict[str, dict[str, list[float]]] = {}
-    for t in dated:
-        bucket = "recent" if t.date >= median_date else "earlier"
-        by_category.setdefault(t.category, {"earlier": [], "recent": []})
-        by_category[t.category][bucket].append(abs(float(t.amount or 0)))
+        by_category: dict[str, dict[str, list[float]]] = {}
+        for t in dated:
+            if period_start <= t.date <= period_end:
+                bucket = "recent"
+            elif previous_start <= t.date <= previous_end:
+                bucket = "earlier"
+            else:
+                continue
+            by_category.setdefault(t.category, {"earlier": [], "recent": []})
+            by_category[t.category][bucket].append(abs(float(t.amount or 0)))
+    else:
+        # Comportement historique : pas de période sélectionnée (vue "tout
+        # l'historique"), on coupe à la date médiane de tout l'historique
+        # chargé — un partage par moitié, pas une vraie comparaison
+        # calendaire.
+        sorted_dates = sorted(t.date for t in dated)
+        median_date = sorted_dates[len(sorted_dates) // 2]
+
+        by_category = {}
+        for t in dated:
+            bucket = "recent" if t.date >= median_date else "earlier"
+            by_category.setdefault(t.category, {"earlier": [], "recent": []})
+            by_category[t.category][bucket].append(abs(float(t.amount or 0)))
 
     anomalies: list[Anomaly] = []
     for category, periods in by_category.items():
@@ -232,21 +290,37 @@ def _detect_category_trends(transactions: list[Transaction]) -> list[Anomaly]:
         change = (recent_total - earlier_total) / earlier_total
         if abs(change) >= TREND_CHANGE_THRESHOLD:
             direction = "supérieurs" if change > 0 else "inférieurs"
+            if has_period:
+                comparison_txt = "à la période précédente"
+                why = (
+                    f"Comparaison des montants de cette catégorie entre la "
+                    f"période sélectionnée ({len(recent)} transactions) et la "
+                    f"période précédente de même durée ({len(earlier)} transactions)."
+                )
+            else:
+                comparison_txt = (
+                    "à la période antérieure comparable (répartition par moitié "
+                    "de l'historique chargé, faute de période sélectionnée)"
+                )
+                why = (
+                    f"Comparaison des montants de cette catégorie entre la "
+                    f"moitié la plus récente ({len(recent)} transactions) et la "
+                    f"moitié la plus ancienne ({len(earlier)} transactions) de "
+                    f"tout l'historique chargé, coupées à la date médiane — "
+                    f"aucune période n'a été sélectionnée pour une comparaison "
+                    f"calendaire précise."
+                )
             anomalies.append(
                 Anomaly(
                     type="category_trend",
                     severity=_trend_severity(abs(change)),
                     message=(
                         f"Les montants en catégorie « {category} » sont "
-                        f"{abs(change) * 100:.0f} % {direction} à la période précédente "
+                        f"{abs(change) * 100:.0f} % {direction} {comparison_txt} "
                         f"({earlier_total:.2f} $ → {recent_total:.2f} $)."
                     ),
                     category=category,
-                    why=(
-                        f"Comparaison des montants de cette catégorie entre la "
-                        f"période récente ({len(recent)} transactions) et la "
-                        f"période antérieure ({len(earlier)} transactions)."
-                    ),
+                    why=why,
                     impact_amount=round(recent_total - earlier_total, 2),
                     action=(
                         f"Examiner les transactions récentes en catégorie "
@@ -263,10 +337,21 @@ def _detect_category_trends(transactions: list[Transaction]) -> list[Anomaly]:
     return anomalies
 
 
-def detect_anomalies(transactions: list[Transaction]) -> list[Anomaly]:
-    anomalies = _detect_category_outlier_clusters(transactions) + _detect_category_trends(
-        transactions
-    )
+def detect_anomalies(
+    transactions: list[Transaction],
+    *,
+    period_start: date | None = None,
+    period_end: date | None = None,
+) -> list[Anomaly]:
+    """Si ``period_start``/``period_end`` sont fournis, les deux détecteurs
+    comparent la période sélectionnée à la période précédente immédiatement
+    contiguë de même durée (même formule que
+    `dashboard.py::get_company_kpis_variance`) au lieu de leurs fenêtres par
+    défaut (30 jours ancrés sur la donnée / partage médian de l'historique).
+    Sans période (``None``/``None``), comportement historique inchangé."""
+    anomalies = _detect_category_outlier_clusters(
+        transactions, period_start=period_start, period_end=period_end
+    ) + _detect_category_trends(transactions, period_start=period_start, period_end=period_end)
     severity_rank = {"high": 0, "medium": 1, "low": 2}
     anomalies.sort(key=lambda a: severity_rank[a.severity])
     return anomalies[:MAX_ANOMALIES]

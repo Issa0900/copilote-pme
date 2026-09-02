@@ -111,20 +111,55 @@ SQLAlchemy 2.0 models in `backend/app/models.py`, migrations in `backend/alembic
 
 `render.yaml` deploys backend (Docker) + managed Postgres to Render; frontend is deployed separately (see `docs/deploiement.md`). In production, FastAPI's `/docs`, `/redoc`, and `/openapi.json` are disabled (`ENVIRONMENT=production`, see `main.py`) — don't re-enable them unconditionally when touching `main.py`.
 
-## Where the work stands (updated 2026-09-01)
+## Where the work stands (updated 2026-09-02)
 
-Backend suite: **138 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work.
+Backend suite: **145 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work.
 
 ### Known defects, found by auditing the calculation logic against real demo data
 
-Verified, still open, roughly by severity:
+The four findings below were the first lot of targeted fixes (2026-09-02). Three are closed; the fourth is
+mitigated but structurally open. Uncommitted at time of writing.
 
-1. **The category donut adds revenue to expenses.** `compute_category_breakdown` sums `abs(amount)` with no sign filter, so "Loyer" (an expense) and "Ventes comptoir" (revenue) are slices of the same pie and the centre total is meaningless. The component's own `<title>` claims it shows expenses only. Fix: split by sign, or scope it to expenses and say so.
-2. **Three competing definitions of "écart" render side by side.** `variance.py` compares the selected period to the preceding one of equal length; the anomaly cluster detector uses a 30-day window anchored on the newest data; the anomaly trend detector splits at the **median date of all history** (with 6 months loaded, that's 3 months vs 3 months) while its wording says "la période précédente". On a 7-day view the same category shows three unrelated numbers. Fix: make every detector honour the selected period.
-3. **Quarantined rows without a date vanish under any period filter.** 6 of the 11 seeded quarantine rows have `date IS NULL` — which is *why* they're quarantined — so filtering hides the worst rows and makes data quality look better the closer you look.
-4. **Panier moyen blends incomparable sales.** It is `revenue / count(amount > 0)`, so counter sales (~45 $), online (~120 $) and catering (~450 $) average to a figure describing no real transaction, and any positive line (refund, deposit, subsidy) counts as a sale. Spec §14 defines it as `CA / nombre de commandes` — the model has no order entity yet.
+1. ~~**The category donut adds revenue to expenses.**~~ **Fixed.** `compute_category_breakdown` now filters
+   `amount < 0` and returns expenses only, in absolute value — matching the `<title>` the component already
+   claimed ("Répartition des dépenses par catégorie"). Signature and `CategoryBreakdownItem` unchanged.
+2. ~~**Three competing definitions of "écart" render side by side.**~~ **Fixed.** `detect_anomalies` now takes
+   keyword-only `period_start`/`period_end`. When they are supplied, both detectors honour the selected period
+   using the *same* previous-period formula as `variance.py` / `dashboard.py::get_company_kpis_variance`
+   (span, `previous_end = period_start - 1 day`, `previous_start = previous_end - span`). Two caveats worth
+   knowing before touching this code:
+   - The outlier-cluster baseline deliberately stays **all history before `period_start`**, not the equal-length
+     previous period — an equal-length window rarely reaches `MIN_BASELINE_SAMPLE` and would wreck the
+     median/MAD robustness. So its "recent" window is calendar-exact while its baseline is not; that asymmetry
+     is intentional and commented in place.
+   - With `None`/`None` (no period selected) the historical behaviour is kept, but the trend wording no longer
+     claims "la période précédente" — it now says explicitly that it splits the loaded history in half at the
+     median date. `recommendations.py`, `reports.py` and `routers/alerts.py` still call the no-period mode;
+     wiring them to a period was deliberately left out of this lot.
+   `GET /companies/{id}/anomalies` accepts `start_date`/`end_date` (same convention as the other dashboard
+   routes) and the dashboard now passes the active period to it. `health.py` drops the **lower** date bound on
+   its `anomaly_source` query (the detector needs prior history for its baseline) while keeping the upper one,
+   and passes the period through — so "Stabilité" is still scoped to the same window as the other dimensions.
+3. ~~**Quarantined rows without a date vanish under any period filter.**~~ **Fixed.** `compute_company_kpis` no
+   longer applies the date bounds in the outer `WHERE`; each `CASE` carries its own period condition, and the
+   quarantine `CASE` reads `status == "quarantined" AND (in_period OR date IS NULL)`. Undated quarantine rows
+   are therefore always counted; dated ones still honour the filter. Still **one** query.
+4. **Panier moyen blends incomparable sales — mitigated, not fixed.** The formula is unchanged
+   (`revenue / count(amount > 0)`): spec §14 wants `CA / nombre de commandes` and the model has no order
+   entity, and there is no category/type signal in `ingestion.py` to identify refunds, deposits or subsidies
+   (`CATEGORY_SYNONYMS` maps column *names*, not values), so any exclusion rule would have been guesswork.
+   Instead the limit is now stated: a long comment on the computation in `kpis.py`, and on the dashboard the
+   KPI card carries `TrustBadge level="hypothese"` plus a note saying every positive line counts as a sale.
+   Closing this properly requires an order entity in ingestion + model — a separate lot.
 
-`health.py` already carries the fixes for the two worst findings (trend blindness, critical-dimension downgrade); items 1–4 above have **not** been started.
+Note that `health.py`'s "Qualité des données" dimension inherits the fix from item 3 for free, since it reads
+`kpis.quarantined_count`.
+
+Also landed in the same lot: two indexes on `transactions` — `ix_transactions_company_status_date` on
+`(company_id, status, date)` (the dominant filter triple across `kpis.py`, `variance.py`, the anomaly and alert
+routers) and `ix_transactions_import_id` (the `routers/imports.py` pattern) — migration `214c9d63a123`,
+applied and verified reversible. They also blunt the cost of `health.py` now loading history without a lower
+bound.
 
 ### Deliberate deviations from the older docs
 

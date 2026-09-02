@@ -110,24 +110,26 @@ def compute_health_score(
     )
 
     # Même source que GET /anomalies : le détecteur travaille sur les
-    # transactions validées, sa propre fenêtre récente étant ancrée sur la
-    # donnée (et non sur le filtre de période choisi à l'écran).
+    # transactions validées. Le détecteur lui-même reste bien scopé sur la
+    # période choisie pour ses résultats "recent"/"earlier" (via
+    # `period_start`/`period_end` passés à `detect_anomalies` ci-dessous) :
+    # « Stabilité » compare donc la même fenêtre calendaire que les autres
+    # dimensions. Mais la REQUÊTE, elle, charge plus large volontairement —
+    # sans borne basse — car le détecteur a besoin de l'historique antérieur
+    # à `start_date` pour sa baseline statistique (médiane/MAD, comparaison
+    # avec la période précédente) ; la borne haute (`end_date`) reste
+    # appliquée pour ne pas charger de données futures hors de la vue
+    # choisie.
     # `anomalies` accepte une liste déjà chargée : l'appelant qui a besoin des
     # deux (score + liste d'anomalies) peut la charger une seule fois.
     if anomaly_source is None:
         query = db.query(Transaction).filter(
             Transaction.company_id == company_id, Transaction.status == "validated"
         )
-        # Le détecteur doit voir la même période que les autres dimensions :
-        # sans ce filtre, « Stabilité » notait tout l'historique pendant que
-        # « Rentabilité » notait la semaine choisie — un score composite dont
-        # les composantes ne parlaient pas de la même période.
-        if start_date is not None:
-            query = query.filter(Transaction.date >= start_date)
         if end_date is not None:
             query = query.filter(Transaction.date <= end_date)
         anomaly_source = query.all()
-    anomalies = detect_anomalies(anomaly_source)
+    anomalies = detect_anomalies(anomaly_source, period_start=start_date, period_end=end_date)
 
     dimensions: list[HealthDimension] = []
 

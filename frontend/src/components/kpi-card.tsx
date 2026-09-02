@@ -5,6 +5,7 @@
 import type { ReactNode } from "react";
 
 import { Sparkline } from "@/components/sparkline";
+import { TrustBadge, type TrustLevel } from "@/components/ui";
 import { formatCurrency } from "@/lib/format";
 import type { KpiVariance } from "@/lib/types";
 
@@ -50,6 +51,8 @@ export function KpiCard({
   targetLabel,
   formatTarget,
   variance,
+  trust,
+  note,
   enterDelay = "0s",
 }: {
   label: string;
@@ -70,6 +73,12 @@ export function KpiCard({
   formatTarget?: (value: number) => string;
   /** Analyse d'écarts : quelles catégories portent le mouvement de ce KPI. */
   variance?: KpiVariance | null;
+  /** Niveau de fiabilité de CETTE carte, quand il diffère du « Fait » annoncé
+   * pour le reste de la grille (métrique estimée faute de donnée exacte). */
+  trust?: TrustLevel;
+  /** Une phrase disant en quoi le chiffre est approché et pourquoi — affichée,
+   * pas seulement en infobulle : une limite invisible n'en est pas une. */
+  note?: string;
   enterDelay?: string;
 }) {
   const delta =
@@ -86,9 +95,12 @@ export function KpiCard({
       className="animate-enter rounded-xl border border-border bg-surface p-4 shadow-sm transition-transform duration-200 ease-out hover:-translate-y-[3px] hover:shadow-md"
       style={{ "--enter-delay": enterDelay } as React.CSSProperties}
     >
-      <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-foreground-muted">
+      {/* La carte est étroite (grille jusqu'à 6 colonnes) : le libellé et
+          l'étiquette de fiabilité passent à la ligne plutôt que de déborder. */}
+      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs uppercase tracking-wide text-foreground-muted">
         {icon && <span className="text-foreground-muted/80">{icon}</span>}
         {label}
+        {trust && <TrustBadge level={trust} />}
       </p>
       <p className="mt-1.5 font-mono text-2xl font-semibold text-foreground">{value}</p>
 
@@ -100,6 +112,12 @@ export function KpiCard({
       ) : (
         <p className="mt-1 text-[11px] text-foreground-muted">
           Choisissez une période pour comparer
+        </p>
+      )}
+
+      {note && (
+        <p className="mt-2 border-t border-border pt-2 text-[10.5px] leading-snug text-foreground-muted">
+          {note}
         </p>
       )}
 

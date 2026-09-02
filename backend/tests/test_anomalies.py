@@ -132,6 +132,94 @@ def test_category_trend_ignored_when_earlier_total_zero():
     assert [a for a in detect_anomalies(earlier + recent) if a.type == "category_trend"] == []
 
 
+def test_category_trend_uses_selected_period_not_median_split():
+    # Historique large, mais seule une fenêtre calendaire précise (période +
+    # période précédente de même durée) doit alimenter la comparaison quand
+    # elle est fournie — pas la médiane de tout l'historique.
+    noise_old = [
+        _txn(100, category="Fournitures", d=date(2024, 1, 1)),
+        _txn(100, category="Fournitures", d=date(2024, 1, 2)),
+    ]
+    # span de la période sélectionnée = 1 jour (6/1 -> 6/2), donc la période
+    # précédente de même durée = 5/30 -> 5/31 (previous_end = start - 1 jour,
+    # previous_start = previous_end - span).
+    earlier = [
+        _txn(100, category="Fournitures", d=date(2024, 5, 30)),
+        _txn(100, category="Fournitures", d=date(2024, 5, 31)),
+    ]
+    recent = [
+        _txn(300, category="Fournitures", d=date(2024, 6, 1)),
+        _txn(300, category="Fournitures", d=date(2024, 6, 2)),
+    ]
+    txns = noise_old + earlier + recent
+    anomalies = [
+        a
+        for a in detect_anomalies(
+            txns, period_start=date(2024, 6, 1), period_end=date(2024, 6, 2)
+        )
+        if a.type == "category_trend"
+    ]
+    assert len(anomalies) == 1
+    # earlier = seulement la période précédente de même durée (1-2 mai),
+    # pas noise_old (janvier) : earlier_total = 200, pas 400.
+    assert anomalies[0].metadata["earlier_total"] == 200.0
+    assert anomalies[0].metadata["recent_total"] == 600.0
+    assert "à la période précédente" in anomalies[0].message
+
+
+def test_category_trend_message_is_honest_without_period():
+    earlier = [
+        _txn(100, category="Fournitures", d=date(2024, 1, 1)),
+        _txn(100, category="Fournitures", d=date(2024, 1, 2)),
+    ]
+    recent = [
+        _txn(300, category="Fournitures", d=date(2024, 6, 1)),
+        _txn(300, category="Fournitures", d=date(2024, 6, 2)),
+    ]
+    anomalies = [
+        a for a in detect_anomalies(earlier + recent) if a.type == "category_trend"
+    ]
+    assert len(anomalies) == 1
+    assert "à la période précédente" not in anomalies[0].message
+    assert "historique" in anomalies[0].message
+    assert "date médiane" in anomalies[0].why or "médiane" in anomalies[0].why
+
+
+def test_outlier_cluster_uses_selected_period_as_recent_and_full_history_as_baseline():
+    # Baseline bien antérieure à la période sélectionnée.
+    baseline = [_txn(100, d=date(2024, 1, i)) for i in range(1, 9)]
+    # Transaction "recent" hors des 30 derniers jours ancrés sur la donnée la
+    # plus récente, mais dans la période explicitement sélectionnée.
+    outlier = _txn(10_000, d=date(2024, 6, 1))
+    normal_recent = [_txn(100, d=date(2024, 6, 1)) for _ in range(3)]
+    # Bruit très postérieur à la période sélectionnée : ne doit compter ni
+    # comme baseline ni comme recent.
+    future_noise = [_txn(100, d=date(2024, 12, 1)) for _ in range(5)]
+
+    anomalies = detect_anomalies(
+        baseline + normal_recent + [outlier] + future_noise,
+        period_start=date(2024, 6, 1),
+        period_end=date(2024, 6, 1),
+    )
+    outlier_anomalies = [a for a in anomalies if a.type == "transaction_outlier"]
+    assert len(outlier_anomalies) == 1
+    assert outlier_anomalies[0].transaction_id == str(outlier.id)
+    assert outlier_anomalies[0].detected_at == date(2024, 6, 1)
+
+
+def test_outlier_cluster_none_period_behavior_unchanged():
+    # Pas de régression : comportement historique (fenêtre 30 jours ancrée
+    # sur la donnée) inchangé quand aucune période n'est fournie.
+    baseline = [_txn(100, d=date(2024, 1, i)) for i in range(1, 9)]
+    recent_normal = [_txn(100, d=date(2024, 6, 1)) for _ in range(12)]
+    outlier = _txn(10_000, d=date(2024, 6, 1))
+    anomalies = detect_anomalies(baseline + recent_normal + [outlier])
+    outlier_anomalies = [a for a in anomalies if a.type == "transaction_outlier"]
+    assert len(outlier_anomalies) == 1
+    assert outlier_anomalies[0].severity == "high"
+    assert outlier_anomalies[0].transaction_id == str(outlier.id)
+
+
 def test_anomalies_sorted_by_severity():
     normal = [_txn(100) for _ in range(6)]
     mild_outlier = _txn(260)  # z autour de 2.5-3 selon stdev, severity medium/high

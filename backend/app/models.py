@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -131,6 +132,15 @@ class Import(Base):
 
 class Transaction(Base):
     __tablename__ = "transactions"
+    __table_args__ = (
+        Index(
+            "ix_transactions_company_status_date",
+            "company_id",
+            "status",
+            "date",
+        ),
+        Index("ix_transactions_import_id", "import_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

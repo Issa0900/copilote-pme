@@ -4,7 +4,7 @@ validées uniquement (PRD section 9.3 : la quarantaine est exclue des KPI)."""
 import uuid
 from datetime import date as date_type
 
-from sqlalchemy import case, func
+from sqlalchemy import and_, case, func, true
 from sqlalchemy.orm import Session
 
 from app.models import Transaction
@@ -33,24 +33,38 @@ def compute_company_kpis(
     start_date: date_type | None = None,
     end_date: date_type | None = None,
 ) -> CompanyKpis:
-    date_filters = _date_range_filters(start_date, end_date)
-    validated = [
-        Transaction.company_id == company_id,
-        Transaction.status == "validated",
-        *date_filters,
-    ]
+    # `in_period` vaut `True` (donc neutre) si aucune borne n'est fournie —
+    # `and_(*[])` s'évalue à `True` en SQLAlchemy. Il ne filtre QUE les
+    # agrégats qui doivent honorer la période choisie à l'écran ; la
+    # quarantaine sans date (ci-dessous) reste volontairement en dehors de
+    # cette règle.
+    in_period = and_(true(), *_date_range_filters(start_date, end_date))
 
     # Une seule passe sur la table plutôt que six requêtes séparées : chaque
     # agrégat est isolé par un CASE conditionnel, et la quarantaine (qui ne
     # partage pas le filtre `status == validated`) est comptée via un CASE sur
     # la ligne complète. Même résultat, un aller-retour au lieu de six.
     is_validated = Transaction.status == "validated"
-    revenue_expr = case((is_validated & (Transaction.amount > 0), Transaction.amount), else_=0)
-    expense_expr = case((is_validated & (Transaction.amount < 0), -Transaction.amount), else_=0)
-    sales_count_expr = case((is_validated & (Transaction.amount > 0), 1), else_=0)
-    validated_count_expr = case((is_validated, 1), else_=0)
-    quarantined_expr = case((Transaction.status == "quarantined", 1), else_=0)
-    validated_date_expr = case((is_validated, Transaction.date), else_=None)
+    is_validated_in_period = is_validated & in_period
+    revenue_expr = case(
+        (is_validated_in_period & (Transaction.amount > 0), Transaction.amount), else_=0
+    )
+    expense_expr = case(
+        (is_validated_in_period & (Transaction.amount < 0), -Transaction.amount), else_=0
+    )
+    sales_count_expr = case((is_validated_in_period & (Transaction.amount > 0), 1), else_=0)
+    validated_count_expr = case((is_validated_in_period, 1), else_=0)
+    # Une ligne en quarantaine avec une vraie date respecte le filtre de
+    # période choisi (cohérence avec le reste de l'écran) ; une ligne en
+    # quarantaine SANS date (précisément le cas qui l'a fait quarantiner)
+    # reste comptée quel que soit le filtre — sinon elle disparaît sous
+    # n'importe quelle période et la qualité des données paraît meilleure
+    # qu'elle ne l'est.
+    is_quarantined = Transaction.status == "quarantined"
+    quarantined_expr = case(
+        (is_quarantined & (in_period | Transaction.date.is_(None)), 1), else_=0
+    )
+    validated_date_expr = case((is_validated_in_period, Transaction.date), else_=None)
 
     row = (
         db.query(
@@ -62,7 +76,7 @@ def compute_company_kpis(
             func.min(validated_date_expr).label("period_start"),
             func.max(validated_date_expr).label("period_end"),
         )
-        .filter(Transaction.company_id == company_id, *date_filters)
+        .filter(Transaction.company_id == company_id)
         .one()
     )
 
@@ -78,6 +92,20 @@ def compute_company_kpis(
         expenses_total=expenses_total,
         net_result=revenue_total - expenses_total,
         transactions_count=transactions_count,
+        # Panier moyen : spec §14 le définit comme CA / nombre de commandes.
+        # Le modèle n'a pas d'entité « commande » — une transaction n'est pas
+        # forcément une commande, et une commande peut être fractionnée en
+        # plusieurs transactions selon la source d'import. Faute de mieux, on
+        # approxime avec `revenue_total / sales_count` (nombre de lignes à
+        # montant positif), ce qui compte à tort comme « vente » toute ligne
+        # positive : remboursement, dépôt, subvention... Inventer une liste de
+        # catégories « non-vente » pour filtrer ces cas serait fragile (aucun
+        # synonyme de valeur de catégorie n'existe dans `ingestion.py`, et une
+        # vraie vente homonyme serait mal classée) — non fait ici,
+        # volontairement. Cette estimation mélange aussi des paniers de
+        # nature très différente (comptoir ~45 $, en ligne ~120 $,
+        # traiteur ~450 $ dans les données démo) : le chiffre ne décrit donc
+        # aucune transaction réelle, seulement une moyenne globale.
         average_sale=(revenue_total / sales_count) if sales_count else None,
         quarantined_count=quarantined_count,
         period_start=period_start,
@@ -133,8 +161,13 @@ def compute_category_breakdown(
     start_date: date_type | None = None,
     end_date: date_type | None = None,
 ) -> list[CategoryBreakdownItem]:
-    """Total absolu par catégorie, transactions validées uniquement. Les
-    catégories au-delà de MAX_CATEGORIES sont regroupées sous « Autres »."""
+    """Total absolu par catégorie, DÉPENSES UNIQUEMENT (transactions validées
+    à montant négatif), affiché en valeur absolue. Le frontend
+    (`category-breakdown.tsx`) annonce explicitement « Répartition des
+    dépenses par catégorie » : mélanger des catégories de revenu (ex. « Ventes
+    comptoir ») et de dépense (ex. « Loyer ») dans le même camembert rendrait
+    le total central incohérent avec ce titre, donc trompeur. Les catégories
+    au-delà de MAX_CATEGORIES sont regroupées sous « Autres »."""
     rows = (
         db.query(
             Transaction.category,
@@ -144,6 +177,7 @@ def compute_category_breakdown(
             Transaction.company_id == company_id,
             Transaction.status == "validated",
             Transaction.category.isnot(None),
+            Transaction.amount < 0,
             *_date_range_filters(start_date, end_date),
         )
         .group_by(Transaction.category)

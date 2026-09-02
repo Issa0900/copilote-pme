@@ -100,7 +100,7 @@ export default async function CompanyDashboardPage({
   ] = await Promise.all([
     apiFetch(`/companies/${id}/kpis/comparison${dateQuery}`),
     apiFetch(`/companies/${id}/health-score${dateQuery}`),
-    apiFetch(`/companies/${id}/anomalies`),
+    apiFetch(`/companies/${id}/anomalies${dateQuery}`),
     apiFetch(`/companies/${id}/kpis/timeseries${dateQuery}`),
     apiFetch(`/companies/${id}/kpis/categories${dateQuery}`),
     apiFetch(`/companies/${id}/alerts/summary`),
@@ -125,20 +125,31 @@ export default async function CompanyDashboardPage({
   const expenseVariance = variances.find((v) => v.metric === "expenses") ?? null;
   const kpis: CompanyKpis | null = comparison?.current ?? null;
   const prev: CompanyKpis | null = comparison?.previous ?? null;
+  const anomaliesFailed = !anomaliesRes.ok;
   const anomalies: Anomaly[] = anomaliesRes.ok ? await anomaliesRes.json() : [];
   const timeseries: DailyKpiPoint[] = timeseriesRes.ok ? await timeseriesRes.json() : [];
   const categories: CategoryBreakdownItem[] = categoriesRes.ok
     ? await categoriesRes.json()
     : [];
+  const alertsSummaryFailed = !alertsSummaryRes.ok;
   const alertsSummary: AlertSummaryItem[] = alertsSummaryRes.ok
     ? await alertsSummaryRes.json()
     : [];
+  const recsFailed = !recsRes.ok;
   const recommendations: Recommendation[] = recsRes.ok ? await recsRes.json() : [];
 
-  const urgentAlerts = alertsSummary
-    .filter((a) => a.level === "critique" || a.level === "important")
-    .reduce((sum, a) => sum + a.count, 0);
-  const pendingRecs = recommendations.filter((r) => r.status === "nouvelle").length;
+  // Un échec de fetch ne doit jamais se déguiser en « 0 » — ça affirmerait
+  // silencieusement qu'il n'y a rien à signaler alors qu'on n'a simplement
+  // pas pu vérifier. On retire donc le compteur plutôt que d'afficher un 0
+  // trompeur (voir le rendu des liens Alertes/Recommandations plus bas).
+  const urgentAlerts = alertsSummaryFailed
+    ? null
+    : alertsSummary
+        .filter((a) => a.level === "critique" || a.level === "important")
+        .reduce((sum, a) => sum + a.count, 0);
+  const pendingRecs = recsFailed
+    ? null
+    : recommendations.filter((r) => r.status === "nouvelle").length;
 
   if (!kpis || (kpis.transactions_count === 0 && !dateRange)) {
     return (
@@ -264,6 +275,12 @@ export default async function CompanyDashboardPage({
             icon={<BasketIcon className="h-4 w-4" />}
             current={kpis.average_sale ?? undefined}
             previous={prev?.average_sale}
+            // Le modèle de données n'a pas de notion de commande : ce chiffre
+            // est le CA divisé par le nombre de lignes positives, ce qui n'est
+            // pas le panier moyen du spec §14. On l'affiche donc comme une
+            // estimation assumée plutôt que comme un fait (PRD §44).
+            trust="hypothese"
+            note="Estimation : faute de notion de commande dans les données importées, chaque ligne à montant positif compte pour une vente — remboursements et dépôts inclus, et paniers de nature différente confondus."
             enterDelay="0.16s"
           />
           <KpiCard
@@ -324,7 +341,10 @@ export default async function CompanyDashboardPage({
               href={`/entreprises/${id}/alertes`}
               className="text-foreground-muted hover:text-foreground"
             >
-              Alertes{urgentAlerts > 0 && <span className="font-mono"> · {urgentAlerts}</span>}
+              Alertes
+              {urgentAlerts !== null && urgentAlerts > 0 && (
+                <span className="font-mono"> · {urgentAlerts}</span>
+              )}
             </Link>
             <span className="text-border">|</span>
             <Link
@@ -332,12 +352,21 @@ export default async function CompanyDashboardPage({
               className="text-foreground-muted hover:text-foreground"
             >
               Recommandations
-              {pendingRecs > 0 && <span className="font-mono"> · {pendingRecs}</span>}
+              {pendingRecs !== null && pendingRecs > 0 && (
+                <span className="font-mono"> · {pendingRecs}</span>
+              )}
             </Link>
           </div>
         </div>
 
-        {anomalies.length === 0 ? (
+        {anomaliesFailed ? (
+          <Card tone="danger">
+            <p className="text-sm text-danger">
+              Impossible de charger les anomalies pour le moment. Réessayez dans
+              quelques instants.
+            </p>
+          </Card>
+        ) : anomalies.length === 0 ? (
           <EmptyState>
             Aucune anomalie détectée (ou pas encore assez de données pour une
             détection fiable).

@@ -66,3 +66,63 @@ def test_compute_category_breakdown_groups_beyond_max_categories(
     breakdown = compute_category_breakdown(company.id, db_session)
     assert len(breakdown) == 6
     assert breakdown[-1].category == "Autres"
+
+
+def test_compute_category_breakdown_excludes_revenue_even_if_largest(
+    db_session, make_company, make_import, make_transaction
+):
+    company = make_company()
+    imp = make_import(company.id)
+    # Revenu bien plus gros que la dépense : s'il n'était pas exclu par signe,
+    # il dominerait le classement et masquerait que le breakdown est censé ne
+    # montrer QUE des dépenses.
+    make_transaction(
+        company.id, imp.id, amount=10_000, date=date(2024, 6, 1), category="Ventes comptoir"
+    )
+    make_transaction(company.id, imp.id, amount=-50, date=date(2024, 6, 1), category="Loyer")
+
+    breakdown = compute_category_breakdown(company.id, db_session)
+    categories = {item.category for item in breakdown}
+    assert "Ventes comptoir" not in categories
+    assert categories == {"Loyer"}
+    assert breakdown[0].total == 50.0
+
+
+def test_compute_company_kpis_counts_dateless_quarantine_regardless_of_period(
+    db_session, make_company, make_import, make_transaction
+):
+    company = make_company()
+    imp = make_import(company.id)
+    # date=None est précisément la raison de la quarantaine ici : le filtre
+    # de période choisi (qui exclurait n'importe quelle date réelle) ne doit
+    # pas la faire disparaître du décompte.
+    make_transaction(
+        company.id, imp.id, amount=9999, date=None, status="quarantined"
+    )
+
+    kpis = compute_company_kpis(
+        company.id, db_session, start_date=date(2030, 1, 1), end_date=date(2030, 1, 31)
+    )
+    assert kpis.quarantined_count == 1
+
+
+def test_compute_company_kpis_dated_quarantine_respects_period_filter(
+    db_session, make_company, make_import, make_transaction
+):
+    company = make_company()
+    imp = make_import(company.id)
+    # Cette ligne quarantinée a une vraie date, hors de la période demandée :
+    # elle doit rester soumise au filtre de période, contrairement aux lignes
+    # sans date.
+    make_transaction(
+        company.id,
+        imp.id,
+        amount=9999,
+        date=date(2024, 1, 1),
+        status="quarantined",
+    )
+
+    kpis = compute_company_kpis(
+        company.id, db_session, start_date=date(2030, 1, 1), end_date=date(2030, 1, 31)
+    )
+    assert kpis.quarantined_count == 0
