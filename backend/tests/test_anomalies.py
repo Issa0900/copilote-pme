@@ -220,6 +220,44 @@ def test_outlier_cluster_none_period_behavior_unchanged():
     assert outlier_anomalies[0].transaction_id == str(outlier.id)
 
 
+def test_outlier_cluster_message_describes_selected_period_not_30_days():
+    # Cas count > 1 : le message groupé doit décrire la fenêtre réellement
+    # analysée (la période sélectionnée), jamais « 30 derniers jours ».
+    baseline = [_txn(100, d=date(2024, 1, i)) for i in range(1, 9)]
+    outliers = [
+        _txn(10_000, d=date(2024, 6, 3)),
+        _txn(10_000, d=date(2024, 6, 5)),
+    ]
+
+    anomalies = detect_anomalies(
+        baseline + outliers,
+        period_start=date(2024, 6, 1),
+        period_end=date(2024, 6, 7),
+    )
+    clusters = [a for a in anomalies if a.type == "transaction_outlier"]
+    assert len(clusters) == 1
+    message = clusters[0].message
+    assert clusters[0].metadata["count"] == 2
+    assert "30 derniers jours" not in message
+    assert "sur la période du 1 juin 2024 au 7 juin 2024" in message
+
+
+def test_outlier_cluster_message_keeps_30_days_wording_without_period():
+    # Sans période sélectionnée, la fenêtre glissante de 30 jours est bien
+    # celle réellement employée : la formulation historique reste exacte.
+    baseline = [_txn(100, d=date(2024, 1, i)) for i in range(1, 9)]
+    outliers = [
+        _txn(10_000, d=date(2024, 6, 3)),
+        _txn(10_000, d=date(2024, 6, 5)),
+    ]
+
+    anomalies = detect_anomalies(baseline + outliers)
+    clusters = [a for a in anomalies if a.type == "transaction_outlier"]
+    assert len(clusters) == 1
+    assert clusters[0].metadata["count"] == 2
+    assert "ces 30 derniers jours" in clusters[0].message
+
+
 def test_anomalies_sorted_by_severity():
     normal = [_txn(100) for _ in range(6)]
     mild_outlier = _txn(260)  # z autour de 2.5-3 selon stdev, severity medium/high

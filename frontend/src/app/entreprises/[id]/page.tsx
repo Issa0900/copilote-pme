@@ -315,7 +315,7 @@ export default async function CompanyDashboardPage({
 
         {categories.length > 0 && (
           <div className="animate-enter" style={{ "--enter-delay": "0.15s" } as React.CSSProperties}>
-            <SectionHeading>Répartition par catégorie</SectionHeading>
+            <SectionHeading>Répartition des dépenses par catégorie</SectionHeading>
             <Card>
               <CategoryBreakdown items={categories} />
             </Card>

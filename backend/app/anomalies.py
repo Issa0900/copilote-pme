@@ -157,6 +157,16 @@ def _detect_category_outlier_clusters(
         ),
     }
 
+    # Le message doit décrire la fenêtre réellement analysée : la période
+    # sélectionnée quand il y en a une, la fenêtre glissante sinon.
+    if period_start is not None and period_end is not None:
+        window_txt = (
+            f"sur la période du {_format_date_fr(window_start)} "
+            f"au {_format_date_fr(anchor)}"
+        )
+    else:
+        window_txt = f"ces {RECENT_WINDOW_DAYS} derniers jours"
+
     anomalies: list[Anomaly] = []
     for (category, sign), bucket in groups.items():
         baseline = bucket["baseline"]
@@ -193,7 +203,7 @@ def _detect_category_outlier_clusters(
             )
         else:
             message = (
-                f"{plural} {plural_participle} ces {RECENT_WINDOW_DAYS} derniers jours "
+                f"{plural} {plural_participle} {window_txt} "
                 f"en catégorie « {category} » : {count} transactions totalisant "
                 f"{total:.2f} $ (médiane habituelle : {median:.2f} $)."
             )
