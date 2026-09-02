@@ -6,7 +6,18 @@ from slowapi.errors import RateLimitExceeded
 from app.audit import configure_logging
 from app.config import settings
 from app.rate_limit import limiter
-from app.routers import alerts, anomalies, auth, companies, dashboard, imports, meta, recommendations, reports
+from app.routers import (
+    actions,
+    alerts,
+    anomalies,
+    auth,
+    companies,
+    dashboard,
+    imports,
+    meta,
+    recommendations,
+    reports,
+)
 
 # Spec §64.25 : journalisation des actions sensibles. La configuration du
 # logging est faite ici, au point d'entrée unique de l'application, pour que
@@ -51,6 +62,7 @@ app.add_middleware(
 )
 
 
+app.include_router(actions.router)
 app.include_router(alerts.router)
 app.include_router(anomalies.router)
 app.include_router(auth.router)

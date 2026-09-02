@@ -14,6 +14,7 @@ export const PAGE_SIZES = {
   importTransactions: 200,
   recommendations: 100,
   alerts: 50,
+  actions: 100,
 } as const;
 
 export type PageInfo = {

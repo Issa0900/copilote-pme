@@ -4,11 +4,14 @@ import { useActionState } from "react";
 
 import { Button } from "@/components/ui";
 import {
+  createActionFromRecommendationAction,
   setRecommendationStatusAction,
+  type CreateActionState,
   type SetRecommendationStatusState,
 } from "./actions";
 
 const initialState: SetRecommendationStatusState = {};
+const initialCreateActionState: CreateActionState = {};
 
 export function RecommendationActions({
   companyId,
@@ -29,6 +32,11 @@ export function RecommendationActions({
     recommendationId,
     "rejetee"
   );
+  const createActionAction = createActionFromRecommendationAction.bind(
+    null,
+    companyId,
+    recommendationId
+  );
 
   const [acceptState, acceptFormAction, acceptPending] = useActionState(
     acceptAction,
@@ -38,8 +46,13 @@ export function RecommendationActions({
     rejectAction,
     initialState
   );
+  const [createActionState, createActionFormAction, createActionPending] = useActionState(
+    createActionAction,
+    initialCreateActionState
+  );
 
-  const error = acceptState?.error ?? rejectState?.error;
+  const pending = acceptPending || rejectPending || createActionPending;
+  const error = acceptState?.error ?? rejectState?.error ?? createActionState?.error;
 
   return (
     <div>
@@ -48,9 +61,24 @@ export function RecommendationActions({
           {error}
         </p>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {/* Créer une action décide aussi d'agir : elle passe la
+            recommandation à "acceptee" côté backend (spec §64.15 distingue
+            « accepter » et « créer une tâche », mais laisser les deux
+            boutons actifs en même temps ferait croire qu'on peut créer une
+            action SANS avoir accepté). */}
+        <form action={createActionFormAction}>
+          <Button type="submit" size="sm" disabled={pending}>
+            {createActionPending ? "..." : "Créer une action"}
+          </Button>
+        </form>
         <form action={acceptFormAction}>
-          <Button type="submit" size="sm" disabled={acceptPending || rejectPending}>
+          <Button
+            type="submit"
+            variant="secondary"
+            size="sm"
+            disabled={pending}
+          >
             {acceptPending ? "..." : "Accepter"}
           </Button>
         </form>
@@ -59,7 +87,7 @@ export function RecommendationActions({
             type="submit"
             variant="secondary"
             size="sm"
-            disabled={acceptPending || rejectPending}
+            disabled={pending}
           >
             {rejectPending ? "..." : "Rejeter"}
           </Button>

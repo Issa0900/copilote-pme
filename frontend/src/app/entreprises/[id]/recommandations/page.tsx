@@ -195,9 +195,13 @@ export default async function CompanyRecommendationsPage({
 
       <p className="mt-8 text-xs text-foreground-muted">
         Générées automatiquement à partir des anomalies significatives (sévérité
-        élevée ou moyenne). Accepter ou rejeter met à jour le statut de la
-        recommandation, mais ne crée pas encore de tâche assignée à un membre
-        de l&apos;équipe.
+        élevée ou moyenne). Créer une action fait passer la recommandation à
+        « Acceptée » et la suit dans le{" "}
+        <a href={`/entreprises/${id}/actions`} className="underline">
+          Centre d&apos;actions
+        </a>{" "}
+        — pas encore de responsable assignable, faute de gestion d&apos;équipe
+        dans le produit.
       </p>
     </div>
   );

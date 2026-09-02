@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import {
+  ActionIcon,
   AlertIcon,
   CloseIcon,
   HomeIcon,
@@ -38,6 +39,12 @@ const NAV_SECTIONS = [
         label: "Recommandations",
         countKey: "recommendations",
         Icon: RecommendationIcon,
+      },
+      {
+        href: "/actions",
+        label: "Centre d'actions",
+        countKey: "actions",
+        Icon: ActionIcon,
       },
     ],
   },
@@ -155,18 +162,21 @@ export function CompanyNav({
   company,
   alertCount,
   recommendationCount,
+  actionCount,
 }: {
   companyId: string;
   company: Company | null;
   // `null` (et non 0) quand le compteur n'a pas pu être chargé.
   alertCount: number | null;
   recommendationCount: number | null;
+  actionCount: number | null;
 }) {
   const pathname = usePathname();
   const base = `/entreprises/${companyId}`;
   const counts: Record<string, number | null> = {
     alerts: alertCount,
     recommendations: recommendationCount,
+    actions: actionCount,
   };
   const [open, setOpen] = useState(false);
 
