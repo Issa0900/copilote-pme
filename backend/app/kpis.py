@@ -212,3 +212,38 @@ def compute_category_breakdown(
     other_total = sum(item.total for item in items[MAX_CATEGORIES - 1 :])
     head.append(CategoryBreakdownItem(category="Autres", total=other_total))
     return head
+
+
+def compute_category_total(
+    company_id: uuid.UUID,
+    db: Session,
+    category: str,
+    start_date: date_type,
+    end_date: date_type,
+) -> float:
+    """Total SIGNÉ (`Transaction.amount`, + pour revenu / − pour dépense)
+    d'UNE catégorie sur une fenêtre — pour app/actions.py (mesure
+    avant/après, spec §32). Contrairement à `compute_category_breakdown`
+    (dépenses uniquement, valeur absolue, pour le donut du tableau de bord),
+    cette fonction doit pouvoir mesurer une catégorie de revenu aussi bien
+    qu'une catégorie de dépense : la mesure d'une action porte sur
+    n'importe quelle catégorie identifiée par une anomalie
+    (`anomalies.py::_detect_category_outlier_clusters`/`_detect_category_trends`
+    ne distinguent pas non plus revenu/dépense dans leur regroupement par
+    catégorie).
+
+    Avec cette convention de signe, une valeur qui augmente est toujours une
+    amélioration du résultat net — que la catégorie soit un revenu (plus de
+    revenu) ou une dépense (moins négatif = moins de dépense)."""
+    total = (
+        db.query(func.coalesce(func.sum(Transaction.amount), 0))
+        .filter(
+            Transaction.company_id == company_id,
+            Transaction.status == "validated",
+            Transaction.category == category,
+            Transaction.date >= start_date,
+            Transaction.date <= end_date,
+        )
+        .scalar()
+    )
+    return float(total or 0)

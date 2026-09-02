@@ -93,6 +93,15 @@ export function RecommendationIcon(props: IconProps) {
   );
 }
 
+export function ActionIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M8.5 12.5l2 2 5-5" />
+    </svg>
+  );
+}
+
 export function HomeIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

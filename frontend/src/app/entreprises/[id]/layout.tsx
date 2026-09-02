@@ -2,7 +2,7 @@ import { logoutAction } from "@/app/connexion/actions";
 import { Button, LinkButton } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import type { AlertSummaryItem, Company, Import, Recommendation } from "@/lib/types";
+import type { Action, AlertSummaryItem, Company, Import, Recommendation } from "@/lib/types";
 import { CompanyNav } from "./company-nav";
 
 export default async function CompanyLayout({
@@ -14,11 +14,12 @@ export default async function CompanyLayout({
 }) {
   const { id } = await params;
 
-  const [companyRes, alertsSummaryRes, recsRes, importsRes] = await Promise.all([
+  const [companyRes, alertsSummaryRes, recsRes, importsRes, actionsRes] = await Promise.all([
     apiFetch(`/companies/${id}`),
     apiFetch(`/companies/${id}/alerts/summary`),
     apiFetch(`/companies/${id}/recommendations`),
     apiFetch(`/companies/${id}/imports`),
+    apiFetch(`/companies/${id}/actions`),
   ]);
 
   const company: Company | null = companyRes.ok ? await companyRes.json() : null;
@@ -30,6 +31,8 @@ export default async function CompanyLayout({
   const recommendations: Recommendation[] = recsRes.ok ? await recsRes.json() : [];
   const importsFailed = !importsRes.ok;
   const imports: Import[] = importsRes.ok ? await importsRes.json() : [];
+  const actionsFailed = !actionsRes.ok;
+  const actions: Action[] = actionsRes.ok ? await actionsRes.json() : [];
 
   // « Dernière synchronisation » = date du dernier import réellement reçu.
   // Le produit n'a pas encore de connecteurs qui se synchronisent seuls :
@@ -60,6 +63,9 @@ export default async function CompanyLayout({
   const pendingRecs = recsFailed
     ? null
     : recommendations.filter((r) => r.status === "nouvelle").length;
+  const openActions = actionsFailed
+    ? null
+    : actions.filter((a) => a.status === "a_faire" || a.status === "en_cours").length;
 
   return (
     <div className="flex min-h-screen flex-1 flex-col lg:flex-row">
@@ -68,6 +74,7 @@ export default async function CompanyLayout({
         company={company}
         alertCount={urgentAlerts}
         recommendationCount={pendingRecs}
+        actionCount={openActions}
       />
 
       <main className="flex-1 px-6 py-8 sm:px-10">

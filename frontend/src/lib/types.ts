@@ -113,6 +113,36 @@ export type Recommendation = {
   updated_at: string;
 };
 
+export type ActionStatus = "a_faire" | "en_cours" | "bloquee" | "terminee" | "annulee";
+
+export type Action = {
+  id: string;
+  company_id: string;
+  recommendation_id: string;
+  title: string;
+  status: ActionStatus;
+  priority: "urgente" | "élevée" | "moyenne" | "faible";
+  due_date: string | null;
+
+  /** Catégorie mesurée, `null` si la recommandation d'origine n'en avait pas
+   * (règle "Marge") — dans ce cas c'est la marge nette qui est mesurée. */
+  metric_category: string | null;
+  baseline_start: string;
+  baseline_end: string;
+  baseline_value: number;
+  outcome_start: string | null;
+  outcome_end: string | null;
+  outcome_value: number | null;
+  outcome_measured_at: string | null;
+  /** Variation % entre baseline et outcome. `null` tant que non mesurée.
+   * Toujours vrai que positif = amélioration (convention de signe du
+   * backend, cf. app/kpis.py::compute_category_total). */
+  result_pct: number | null;
+
+  created_at: string;
+  updated_at: string;
+};
+
 export type Report = {
   id: string;
   company_id: string;

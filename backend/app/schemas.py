@@ -333,6 +333,62 @@ class RecommendationUpdate(BaseModel):
         return value
 
 
+ACTION_STATUSES = {"a_faire", "en_cours", "bloquee", "terminee", "annulee"}
+
+
+class ActionCreate(BaseModel):
+    recommendation_id: uuid.UUID
+    # Défaut = `Recommendation.action` (déjà une phrase actionnable) si omis
+    # — voir app/actions.py::create_action_from_recommendation.
+    title: str | None = None
+    due_date: date | None = None
+
+
+class ActionUpdate(BaseModel):
+    title: str | None = None
+    status: str | None = None
+    due_date: date | None = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: str | None) -> str | None:
+        if value is not None and value not in ACTION_STATUSES:
+            raise ValueError(f"statut invalide: {value}")
+        return value
+
+
+class ActionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    company_id: uuid.UUID
+    recommendation_id: uuid.UUID
+    title: str
+    status: str
+    priority: str
+    due_date: date | None
+
+    metric_category: str | None
+    baseline_start: date
+    baseline_end: date
+    baseline_value: float
+    outcome_start: date | None
+    outcome_end: date | None
+    outcome_value: float | None
+    outcome_measured_at: datetime | None
+
+    created_at: datetime
+    updated_at: datetime
+
+    # Variation % entre baseline et outcome — calculée à la volée par le
+    # routeur (pas stockée : jamais désynchronisée de baseline/outcome).
+    # `None` tant que non mesurée. `result_pct > 0` est toujours une
+    # amélioration (cf. app/kpis.py::compute_category_total : la convention
+    # de signe rend "plus haut = mieux" vrai pour une catégorie de revenu
+    # comme de dépense, et pour net_margin_pct).
+    result_pct: float | None = None
+
+
 class AlertRead(BaseModel):
     level: str
     title: str

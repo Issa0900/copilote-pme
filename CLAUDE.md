@@ -113,9 +113,9 @@ SQLAlchemy 2.0 models in `backend/app/models.py`, migrations in `backend/alembic
 
 ## Where the work stands (updated 2026-09-02)
 
-Backend suite: **199 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work.
+Backend suite: **213 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work (lot 5 added two more instances of the same already-accepted `_prevState`/`_formData` unused-arg warning pattern in `recommandations/actions.ts`, not a new category of issue).
 
-Lots 1-3 below are merged into `main` (PR #4). Lot 4 is uncommitted at time of writing.
+Lots 1-4 are merged into `main` (PR #4, PR #5). Lot 5 is uncommitted at time of writing.
 
 ### Known defects, found by auditing the calculation logic against real demo data
 
@@ -278,6 +278,58 @@ One candidate finding turned out to be already mitigated, not a gap: `CompanyKpi
 long caveat in a Python comment but nothing in the API schema — the frontend already hardcodes the same
 caveat as a static note + `TrustBadge level="hypothese"` on the Panier moyen card (lot 1, item 4). Nothing to
 do there.
+
+### Lot 5: Centre d'actions + mesure avant/après (spec §31/§32/§64.16/§64.17)
+
+Closes the biggest remaining gap in the decision loop (Détecter → Comprendre → Décider → **Agir → Mesurer**):
+`recommendations.py` documented its own absence — *"Module 20 ... pas d'entité Task"*. A `Recommendation`
+accepted stayed a status change, never a tracked task, and nothing ever said whether an action produced a
+result.
+
+Three product decisions were made explicitly with Issa before writing any code (see the plan file this lot
+shipped from):
+- **Measured against the origin category** (`Recommendation.category` — Fournitures, Marketing...), not a
+  fixed global KPI or a user-chosen one. `margin_decline` recommendations have `category = None`
+  (`anomalies.py::_detect_margin_decline` sets it deliberately) — in that case `net_margin_pct` is measured
+  instead.
+- **The full loop landed in one lot** — entity, statuses, due date, and before/after measurement together,
+  not "Agir" now and "Mesurer" as a separate follow-up.
+- **No "assigné" field** — no team-invite feature exists yet (`User.company_id` already supports several
+  users per company, `models.py:88`, there's just no way to add one); a selector with exactly one possible
+  value would help nobody. Straightforward to add once invites exist.
+
+**New `Action` model** (`app/models.py`, migration `b4b400124ddc`, index on `(company_id, status)`):
+`recommendation_id` (origin), `title`/`status`/`priority`/`due_date`, and the measurement fields
+`metric_category` (`None` ⇒ `net_margin_pct`) with `baseline_start/end/value` (captured immediately at
+creation, frozen forever after — same "snapshot, never recomputed" principle as `reports.py`) and
+`outcome_start/end/value/measured_at` (computed lazily — **no background job/scheduler exists in this
+product**, verified — the first time `GET /actions` is called after the 30-day follow-up window has actually
+elapsed; frozen the instant it's computed, exactly like a report).
+
+One property fell out of the existing sign convention and simplified the whole design: with
+`Transaction.amount` signed (+ revenue / − expense), a category total that *increases* is always an
+improvement to net result — whether the category is revenue or expense. No separate "higher/lower is better"
+flag needed per Action; "higher is always better" holds for a category total and for `net_margin_pct` alike.
+`app/kpis.py::compute_category_total` is the new small helper this relies on (signed sum for one category,
+sibling to `compute_category_breakdown` which is expenses-only/absolute-value and therefore not reusable
+here — an action can equally be measuring a revenue category).
+
+**"Objectif atteint"** (spec §32's example) only renders when the metric is `net_margin_pct` — comparable to
+`Company.target_margin_pct`, which already exists. A category total has no numeric objective in the data
+model; the screen shows the trend (amount + %) without inventing one.
+
+`app/actions.py` (business logic, mirrors `recommendations.py`) + `app/routers/actions.py`
+(`POST`/`GET`/`PATCH /companies/{id}/actions`, paginated like every other list since lot 2, `require_company_access`
+like every company-scoped router). Creating an Action sets the source `Recommendation.status = "acceptee"` —
+deliberately: a second "Accepter" button that left a recommendation "nouvelle" while an action was already
+running on it would be incoherent. Both action creation and status changes are audit-logged
+(`log_action_created`/`log_action_status_changed` in `app/audit.py`), same spec §64.25 principle as
+recommendation status changes.
+
+Frontend: new `/entreprises/{id}/actions` screen (`actions/` folder, same grouped-by-status pattern as
+`alertes/page.tsx`), a `Recommendations` page button "Créer une action" (redirects to the new screen rather
+than revalidating in place — the user should see where the action landed), and a nav entry with an open-actions
+count badge (`layout.tsx`/`company-nav.tsx`, same pattern as the alerts/recommendations badges already there).
 
 ### Deliberate deviations from the older docs
 

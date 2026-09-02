@@ -203,3 +203,60 @@ class Recommendation(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class Action(Base):
+    """Centre d'actions (PRD Module 20, spec §31/§32). Une recommandation
+    devient une action quand le dirigeant décide d'agir — `recommendation_id`
+    porte l'« origine » exigée par la spec.
+
+    Pas de champ « assigné » (spec §31) : aucune fonctionnalité d'invitation
+    d'équipe n'existe encore dans le produit (un seul utilisateur par
+    entreprise en pratique) ; ajouter un sélecteur à une seule option
+    n'aiderait personne.
+
+    Mesure avant/après (spec §32) figée aux deux moments qui comptent : à la
+    création (`baseline_*`, jamais recalculée même si les données changent
+    après coup) et à la première consultation suivant l'écoulement de la
+    fenêtre de suivi (`outcome_*`, gelée dès qu'elle est calculée — même
+    principe que les rapports). `metric_category` porte la catégorie mesurée
+    (total signé, convention déjà utilisée par
+    `anomalies.py::_profit_contributors_by_category`) ; `None` signifie que
+    la recommandation d'origine n'avait pas de catégorie (règle "Marge"),
+    auquel cas c'est `net_margin_pct` qui est mesuré."""
+
+    __tablename__ = "actions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
+    )
+    recommendation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recommendations.id"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="a_faire")
+    priority: Mapped[str] = mapped_column(String(20), nullable=False)
+    due_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+
+    metric_category: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    baseline_start: Mapped[date_type] = mapped_column(Date, nullable=False)
+    baseline_end: Mapped[date_type] = mapped_column(Date, nullable=False)
+    baseline_value: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False)
+    outcome_start: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    outcome_end: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    outcome_value: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
+    outcome_measured_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (Index("ix_actions_company_status", "company_id", "status"),)

@@ -203,3 +203,36 @@ def log_recommendation_status_changed(
         old_status=old_status,
         new_status=new_status,
     )
+
+
+def log_action_created(
+    user_id: Any, company_id: Any, action_id: Any, *, recommendation_id: Any
+) -> None:
+    """Transformer une recommandation en action suivie (Centre d'actions,
+    spec section 31) est une decision de pilotage au meme titre qu'accepter
+    une recommandation."""
+    log_action(
+        "action.create",
+        user_id=user_id,
+        company_id=company_id,
+        action_id=action_id,
+        recommendation_id=recommendation_id,
+    )
+
+
+def log_action_status_changed(
+    user_id: Any,
+    company_id: Any,
+    action_id: Any,
+    *,
+    old_status: str,
+    new_status: str,
+) -> None:
+    log_action(
+        "action.status_change",
+        user_id=user_id,
+        company_id=company_id,
+        action_id=action_id,
+        old_status=old_status,
+        new_status=new_status,
+    )
