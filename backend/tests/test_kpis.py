@@ -126,3 +126,87 @@ def test_compute_company_kpis_dated_quarantine_respects_period_filter(
         company.id, db_session, start_date=date(2030, 1, 1), end_date=date(2030, 1, 31)
     )
     assert kpis.quarantined_count == 0
+
+
+# --- Marge nette (spec §64.7 : calculée côté backend, jamais côté frontend) ---
+
+
+def test_net_margin_pct_on_simple_case(
+    db_session, make_company, make_import, make_transaction
+):
+    company = make_company()
+    imp = make_import(company.id)
+    make_transaction(company.id, imp.id, amount=1000, date=date(2024, 6, 1))
+    make_transaction(company.id, imp.id, amount=-750, date=date(2024, 6, 2))
+
+    kpis = compute_company_kpis(company.id, db_session)
+    # 250 / 1000 = 25 %
+    assert kpis.net_margin_pct == 25.0
+
+
+def test_net_margin_pct_is_none_without_revenue(
+    db_session, make_company, make_import, make_transaction
+):
+    """Sans revenu, la marge n'existe pas : renvoyer 0.0 afficherait « 0 % de
+    marge » comme un fait alors que rien n'a été vendu (spec §64.8)."""
+    company = make_company()
+    imp = make_import(company.id)
+    make_transaction(company.id, imp.id, amount=-500, date=date(2024, 6, 1))
+
+    kpis = compute_company_kpis(company.id, db_session)
+    assert kpis.revenue_total == 0.0
+    assert kpis.net_margin_pct is None
+
+    # Entreprise sans aucune transaction : idem.
+    empty = make_company(name="Sans données")
+    assert compute_company_kpis(empty.id, db_session).net_margin_pct is None
+
+
+def test_net_margin_pct_can_be_negative_and_matches_net_over_revenue(
+    db_session, make_company, make_import, make_transaction
+):
+    company = make_company()
+    imp = make_import(company.id)
+    make_transaction(company.id, imp.id, amount=800, date=date(2024, 6, 1))
+    make_transaction(company.id, imp.id, amount=-1000, date=date(2024, 6, 2))
+
+    kpis = compute_company_kpis(company.id, db_session)
+    assert kpis.net_result == -200.0
+    assert kpis.net_margin_pct == -25.0
+    # Cohérence explicite avec les deux agrégats dont elle est dérivée.
+    assert kpis.net_margin_pct == round(
+        (kpis.net_result / kpis.revenue_total) * 100, 1
+    )
+
+
+def test_net_margin_pct_honours_period_filter(
+    db_session, make_company, make_import, make_transaction
+):
+    company = make_company()
+    imp = make_import(company.id)
+    # Juin : marge de 50 %. Juillet : marge de 10 %.
+    make_transaction(company.id, imp.id, amount=200, date=date(2024, 6, 1))
+    make_transaction(company.id, imp.id, amount=-100, date=date(2024, 6, 2))
+    make_transaction(company.id, imp.id, amount=200, date=date(2024, 7, 1))
+    make_transaction(company.id, imp.id, amount=-180, date=date(2024, 7, 2))
+
+    june = compute_company_kpis(
+        company.id, db_session, start_date=date(2024, 6, 1), end_date=date(2024, 6, 30)
+    )
+    july = compute_company_kpis(
+        company.id, db_session, start_date=date(2024, 7, 1), end_date=date(2024, 7, 31)
+    )
+    assert june.net_margin_pct == 50.0
+    assert july.net_margin_pct == 10.0
+
+
+def test_kpis_endpoint_exposes_net_margin_pct(authed_client, make_import, make_transaction):
+    """Contrat HTTP : le frontend doit pouvoir lire la marge au lieu de la
+    recalculer (spec §64.29)."""
+    client, _, company = authed_client
+    imp = make_import(company.id)
+    make_transaction(company.id, imp.id, amount=400, date=date(2024, 6, 1))
+    make_transaction(company.id, imp.id, amount=-300, date=date(2024, 6, 2))
+
+    body = client.get(f"/companies/{company.id}/kpis").json()
+    assert body["net_margin_pct"] == 25.0

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { PAGE_SIZES, readPageInfo } from "@/lib/pagination";
 import type {
   AlertSummaryItem,
   Anomaly,
@@ -104,7 +105,7 @@ export default async function CompanyDashboardPage({
     apiFetch(`/companies/${id}/kpis/timeseries${dateQuery}`),
     apiFetch(`/companies/${id}/kpis/categories${dateQuery}`),
     apiFetch(`/companies/${id}/alerts/summary`),
-    apiFetch(`/companies/${id}/recommendations`),
+    apiFetch(`/companies/${id}/recommendations?limit=${PAGE_SIZES.recommendations}`),
     apiFetch(`/companies/${id}`),
     // L'analyse d'écarts suppose deux périodes comparables : sans plage de
     // dates, il n'y a rien à comparer et la route n'est pas appelée.
@@ -125,6 +126,10 @@ export default async function CompanyDashboardPage({
   const expenseVariance = variances.find((v) => v.metric === "expenses") ?? null;
   const kpis: CompanyKpis | null = comparison?.current ?? null;
   const prev: CompanyKpis | null = comparison?.previous ?? null;
+  // Devise de l'entreprise (spec §64.3/§64.6/§64.8) : tout montant affiché
+  // sur cet écran doit être formaté avec elle, jamais avec un CAD supposé —
+  // CAD n'est ici qu'un repli si l'entreprise n'a pas pu être chargée.
+  const currency = company?.currency ?? "CAD";
   const anomaliesFailed = !anomaliesRes.ok;
   const anomalies: Anomaly[] = anomaliesRes.ok ? await anomaliesRes.json() : [];
   const timeseries: DailyKpiPoint[] = timeseriesRes.ok ? await timeseriesRes.json() : [];
@@ -137,6 +142,16 @@ export default async function CompanyDashboardPage({
     : [];
   const recsFailed = !recsRes.ok;
   const recommendations: Recommendation[] = recsRes.ok ? await recsRes.json() : [];
+  // Le backend borne cette liste (spec §64.24) : le compteur ci-dessous est
+  // donc calculé sur une page, pas sur la totalité. Quand il en manque, le
+  // chiffre est présenté comme un minimum (« 100+ ») plutôt que comme le
+  // décompte exact.
+  const recsPage = readPageInfo(
+    recsRes,
+    recommendations.length,
+    0,
+    PAGE_SIZES.recommendations
+  );
 
   // Un échec de fetch ne doit jamais se déguiser en « 0 » — ça affirmerait
   // silencieusement qu'il n'y a rien à signaler alors qu'on n'a simplement
@@ -216,20 +231,21 @@ export default async function CompanyDashboardPage({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <KpiCard
             label="Revenus"
-            value={formatCurrency(kpis.revenue_total)}
+            value={formatCurrency(kpis.revenue_total, currency)}
             icon={<RevenueIcon className="h-4 w-4" />}
             current={kpis.revenue_total}
             previous={prev?.revenue_total}
             series={timeseries.map((p) => p.revenue)}
             target={prorateTarget(company?.revenue_target, range)}
             targetLabel="Objectif période"
-            formatTarget={formatCurrency}
+            formatTarget={(v) => formatCurrency(v, currency)}
             variance={revenueVariance}
+            currency={currency}
             enterDelay="0s"
           />
           <KpiCard
             label="Dépenses"
-            value={formatCurrency(kpis.expenses_total)}
+            value={formatCurrency(kpis.expenses_total, currency)}
             icon={<ExpenseIcon className="h-4 w-4" />}
             current={kpis.expenses_total}
             previous={prev?.expenses_total}
@@ -237,13 +253,14 @@ export default async function CompanyDashboardPage({
             series={timeseries.map((p) => p.expenses)}
             target={prorateTarget(company?.expense_budget, range)}
             targetLabel="Budget période"
-            formatTarget={formatCurrency}
+            formatTarget={(v) => formatCurrency(v, currency)}
             variance={expenseVariance}
+            currency={currency}
             enterDelay="0.04s"
           />
           <KpiCard
             label="Résultat net"
-            value={formatCurrency(kpis.net_result)}
+            value={formatCurrency(kpis.net_result, currency)}
             icon={<NetResultIcon className="h-4 w-4" />}
             current={kpis.net_result}
             previous={prev?.net_result}
@@ -252,26 +269,23 @@ export default async function CompanyDashboardPage({
           />
           <KpiCard
             label="Marge nette"
+            // Marge fournie par le backend (`net_margin_pct`), affichée telle
+            // quelle : aucun calcul financier ne doit être fait côté frontend
+            // (spec §64.29). `null` = aucun revenu sur la période, donc marge
+            // non calculable — on montre « — », jamais « 0 % », qui serait un
+            // chiffre faux présenté comme un fait.
             value={
-              kpis.revenue_total > 0
-                ? `${((kpis.net_result / kpis.revenue_total) * 100).toFixed(1)} %`
-                : "—"
+              kpis.net_margin_pct !== null ? `${kpis.net_margin_pct} %` : "—"
             }
             icon={<NetResultIcon className="h-4 w-4" />}
             unit="percentage-points"
-            current={
-              kpis.revenue_total > 0 ? (kpis.net_result / kpis.revenue_total) * 100 : undefined
-            }
-            previous={
-              prev && prev.revenue_total > 0
-                ? (prev.net_result / prev.revenue_total) * 100
-                : undefined
-            }
+            current={kpis.net_margin_pct ?? undefined}
+            previous={prev?.net_margin_pct ?? undefined}
             enterDelay="0.12s"
           />
           <KpiCard
             label="Panier moyen"
-            value={kpis.average_sale !== null ? formatCurrency(kpis.average_sale) : "—"}
+            value={kpis.average_sale !== null ? formatCurrency(kpis.average_sale, currency) : "—"}
             icon={<BasketIcon className="h-4 w-4" />}
             current={kpis.average_sale ?? undefined}
             previous={prev?.average_sale}
@@ -308,7 +322,7 @@ export default async function CompanyDashboardPage({
           <div className="animate-enter" style={{ "--enter-delay": "0.1s" } as React.CSSProperties}>
             <SectionHeading>Évolution financière</SectionHeading>
             <Card>
-              <NetTrendChart data={timeseries} />
+              <NetTrendChart data={timeseries} currency={currency} />
             </Card>
           </div>
         )}
@@ -317,7 +331,7 @@ export default async function CompanyDashboardPage({
           <div className="animate-enter" style={{ "--enter-delay": "0.15s" } as React.CSSProperties}>
             <SectionHeading>Répartition des dépenses par catégorie</SectionHeading>
             <Card>
-              <CategoryBreakdown items={categories} />
+              <CategoryBreakdown items={categories} currency={currency} />
             </Card>
           </div>
         )}
@@ -353,7 +367,18 @@ export default async function CompanyDashboardPage({
             >
               Recommandations
               {pendingRecs !== null && pendingRecs > 0 && (
-                <span className="font-mono"> · {pendingRecs}</span>
+                <span
+                  className="font-mono"
+                  title={
+                    recsPage.truncated
+                      ? "Au moins ce nombre de recommandations nouvelles : la liste complète n'a pas pu être comptée depuis cet écran."
+                      : undefined
+                  }
+                >
+                  {" "}
+                  · {pendingRecs}
+                  {recsPage.truncated ? "+" : ""}
+                </span>
               )}
             </Link>
           </div>
@@ -376,7 +401,7 @@ export default async function CompanyDashboardPage({
             <ul className="grid gap-3 lg:grid-cols-3">
               {anomalies.slice(0, 3).map((anomaly, i) => (
                 <li key={i}>
-                  <AnomalyCard anomaly={anomaly} enterDelay={`${0.1 + i * 0.04}s`} />
+                  <AnomalyCard anomaly={anomaly} currency={currency} enterDelay={`${0.1 + i * 0.04}s`} />
                 </li>
               ))}
             </ul>

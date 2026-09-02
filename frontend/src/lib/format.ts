@@ -1,7 +1,16 @@
-export function formatCurrency(value: number): string {
+/**
+ * `currency` : code ISO 4217 de l'entreprise (`Company.currency`, spec
+ * §64.3/§64.6/§64.8) — à transmettre partout où il est disponible. Le défaut
+ * "CAD" ne couvre qu'un appel qui n'aurait pas encore accès à l'entreprise ;
+ * il ne doit jamais masquer un oubli de fil de devise sur un nouvel écran.
+ * La locale reste "fr-CA" indépendamment de la devise : l'interface entière
+ * est en français, `Intl.NumberFormat` sait déjà placer le symbole et les
+ * décimales propres à chaque devise dans cette locale (ex. "1 234,00 $US").
+ */
+export function formatCurrency(value: number, currency: string = "CAD"): string {
   return new Intl.NumberFormat("fr-CA", {
     style: "currency",
-    currency: "CAD",
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
 }

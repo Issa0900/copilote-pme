@@ -13,12 +13,15 @@ const BOTTOM_PAD = 18; // room for the baseline/legend area
 export function NetTrendChart({
   data,
   compact = false,
+  currency = "CAD",
 }: {
   data: Point[];
   /** Version réduite pour un slot de sparkline (StatTile) : pas d'axe, pas de
    * tooltip, pas de tableau — juste la ligne et le dégradé. Mêmes données
    * réelles que la version complète, jamais de série inventée. */
   compact?: boolean;
+  /** Devise de l'entreprise (`Company.currency`). */
+  currency?: string;
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
   const gradientId = useId();
@@ -140,7 +143,7 @@ export function NetTrendChart({
               fill="transparent"
               tabIndex={0}
               role="button"
-              aria-label={`${formatDate(data[i].date)} : ${formatCurrency(data[i].net)}`}
+              aria-label={`${formatDate(data[i].date)} : ${formatCurrency(data[i].net, currency)}`}
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered(null)}
               onFocus={() => setHovered(i)}
@@ -154,7 +157,7 @@ export function NetTrendChart({
           <div className="mt-1.5 flex justify-between font-mono text-[11px] text-foreground-muted">
             <span>{formatDate(data[0].date)}</span>
             <span>
-              pic — {formatDate(data[peakIndex].date)} : {formatCurrency(data[peakIndex].net)}
+              pic — {formatDate(data[peakIndex].date)} : {formatCurrency(data[peakIndex].net, currency)}
             </span>
             <span>{formatDate(data[data.length - 1].date)}</span>
           </div>
@@ -168,7 +171,7 @@ export function NetTrendChart({
                 }}
               >
                 <span className="font-mono font-semibold">
-                  {formatCurrency(data[hovered].net)}
+                  {formatCurrency(data[hovered].net, currency)}
                 </span>{" "}
                 <span className="font-mono text-foreground-muted">
                   {formatDate(data[hovered].date)}
@@ -194,7 +197,7 @@ export function NetTrendChart({
                     <tr key={d.date} className="border-t border-border">
                       <td className="px-3 py-1.5 font-mono">{formatDate(d.date)}</td>
                       <td className="px-3 py-1.5 text-right font-mono tabular-nums">
-                        {formatCurrency(d.net)}
+                        {formatCurrency(d.net, currency)}
                       </td>
                     </tr>
                   ))}

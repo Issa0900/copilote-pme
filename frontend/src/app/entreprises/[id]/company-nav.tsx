@@ -81,7 +81,7 @@ function NavLinks({
 }: {
   base: string;
   pathname: string | null;
-  counts: Record<string, number>;
+  counts: Record<string, number | null>;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -114,7 +114,10 @@ function NavLinks({
                   <tab.Icon className="h-[18px] w-[18px] shrink-0" />
                   {tab.label}
                 </span>
-                {count !== undefined && count > 0 && (
+                {/* `null` = compteur non chargé : le badge disparaît, plutôt
+                    que d'afficher un 0 qui affirmerait à tort « rien à
+                    traiter ». `0` réel ne s'affiche pas non plus. */}
+                {count != null && count > 0 && (
                   <span
                     className={`rounded-full px-2 py-0.5 font-mono text-[11px] ${
                       isActive ? "bg-black/15 text-nav-active-text" : "bg-black/25"
@@ -155,12 +158,13 @@ export function CompanyNav({
 }: {
   companyId: string;
   company: Company | null;
-  alertCount: number;
-  recommendationCount: number;
+  // `null` (et non 0) quand le compteur n'a pas pu être chargé.
+  alertCount: number | null;
+  recommendationCount: number | null;
 }) {
   const pathname = usePathname();
   const base = `/entreprises/${companyId}`;
-  const counts: Record<string, number> = {
+  const counts: Record<string, number | null> = {
     alerts: alertCount,
     recommendations: recommendationCount,
   };

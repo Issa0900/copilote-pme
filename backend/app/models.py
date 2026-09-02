@@ -40,6 +40,19 @@ class Company(Base):
     revenue_range: Mapped[str | None] = mapped_column(String(50), nullable=True)
     tools_used: Mapped[str | None] = mapped_column(Text, nullable=True)
     objectives: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
+    # Devise de l'entreprise. Un montant sans devise déclarée n'a pas de sens :
+    # afficher « 12 500 » avec un symbole deviné revient à mentir sur l'unité
+    # des chiffres (cf. spec section 64.6). On stocke le code ISO 4217 sur trois
+    # caractères plutôt qu'un symbole : c'est un standard non ambigu (« $ »
+    # désigne aussi bien CAD que USD), et il se transmet tel quel à
+    # Intl.NumberFormat côté frontend, qui connaît déjà le symbole, la position
+    # et le nombre de décimales de chaque devise. Non-nullable, par défaut CAD
+    # (produit destiné au Québec, cf. docs/project-charter.md), pour que les
+    # entreprises déjà en base héritent d'une devise valide sans reprise
+    # manuelle.
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, server_default="CAD"
+    )
 
     # --- Seuils de pilotage, réglables par le dirigeant --------------------
     # Le score de santé et les objectifs affichés au tableau de bord dépendent

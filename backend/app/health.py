@@ -134,8 +134,11 @@ def compute_health_score(
     dimensions: list[HealthDimension] = []
 
     # --- Rentabilité : marge nette rapportée à une cible de référence -------
-    if kpis.revenue_total > 0:
-        margin = (kpis.net_result / kpis.revenue_total) * 100
+    # La marge vient de `compute_company_kpis` (`net_margin_pct`) et n'est plus
+    # recalculée ici : une seule définition de la marge dans tout le code.
+    # `net_margin_pct is None` <=> aucun revenu sur la période.
+    if kpis.net_margin_pct is not None:
+        margin = kpis.net_margin_pct
         profitability = _clamp((margin / target_margin) * 100) if target_margin else 0
         profitability_explanation = (
             f"Marge nette de {margin:.1f} % sur la période "
@@ -219,10 +222,14 @@ def compute_health_score(
         # artificiellement le score d'une entreprise qui n'a rien importé.
         trajectory = 0
         trajectory_explanation = "Pas encore de données pour évaluer la trajectoire."
-    elif previous is not None and previous.revenue_total > 0 and kpis.revenue_total > 0:
-        margin_now = (kpis.net_result / kpis.revenue_total) * 100
-        margin_before = (previous.net_result / previous.revenue_total) * 100
-        margin_shift = margin_now - margin_before
+    elif (
+        previous is not None
+        and previous.net_margin_pct is not None
+        and kpis.net_margin_pct is not None
+    ):
+        # Les deux marges viennent de `compute_company_kpis` : la période et la
+        # précédente sont donc comparées avec exactement la même définition.
+        margin_shift = kpis.net_margin_pct - previous.net_margin_pct
 
         # Barème : stable (±1 pt) = 80. Chaque point perdu coûte 8 points de
         # note, chaque point gagné en rapporte 4 — la dégradation pèse plus
@@ -294,8 +301,8 @@ def compute_health_score(
         summary = "Aucune donnée validée sur la période : importez un fichier pour obtenir un diagnostic."
     else:
         margin_txt = (
-            f"votre marge nette est de {(kpis.net_result / kpis.revenue_total) * 100:.1f} %"
-            if kpis.revenue_total > 0
+            f"votre marge nette est de {kpis.net_margin_pct:.1f} %"
+            if kpis.net_margin_pct is not None
             else "aucun revenu n'est enregistré"
         )
         summary = f"Sur la période analysée, {margin_txt}."

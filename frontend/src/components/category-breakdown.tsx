@@ -24,7 +24,14 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 const TITLE_ID = "category-donut-title";
 
-export function CategoryBreakdown({ items }: { items: Item[] }) {
+export function CategoryBreakdown({
+  items,
+  currency = "CAD",
+}: {
+  items: Item[];
+  /** Devise de l'entreprise (`Company.currency`). */
+  currency?: string;
+}) {
   if (items.length === 0) return null;
 
   const total = items.reduce((sum, i) => sum + i.total, 0);
@@ -86,7 +93,7 @@ export function CategoryBreakdown({ items }: { items: Item[] }) {
           className="rotate-90 font-mono text-[13px] font-semibold"
           style={{ fill: "var(--foreground)", transformOrigin: "center", transformBox: "fill-box" }}
         >
-          {formatCurrency(total)}
+          {formatCurrency(total, currency)}
         </text>
       </svg>
 
@@ -103,7 +110,7 @@ export function CategoryBreakdown({ items }: { items: Item[] }) {
             </span>
             <span className="flex shrink-0 items-center gap-2 font-mono tabular-nums text-foreground-muted">
               <span className="text-[11px]">{Math.round(s.fraction * 100)}%</span>
-              {formatCurrency(s.total)}
+              {formatCurrency(s.total, currency)}
             </span>
           </li>
         ))}
@@ -124,7 +131,7 @@ export function CategoryBreakdown({ items }: { items: Item[] }) {
                 <tr key={item.category} className="border-t border-border">
                   <td className="px-3 py-1.5">{item.category}</td>
                   <td className="px-3 py-1.5 text-right font-mono tabular-nums">
-                    {formatCurrency(item.total)}
+                    {formatCurrency(item.total, currency)}
                   </td>
                 </tr>
               ))}

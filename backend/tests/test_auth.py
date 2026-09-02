@@ -97,6 +97,32 @@ class TestRegister:
         resp = client.post("/auth/register", json=payload)
         assert resp.status_code == 422
 
+    def test_register_defaults_to_cad_currency(self, client, db_session):
+        """Spec §64.3 : la devise est un champ MVP de l'entreprise. Sans la
+        préciser, l'entreprise doit obtenir une devise valide (CAD) et non pas
+        rester sans devise."""
+        payload = _valid_register_payload()
+        resp = client.post("/auth/register", json=payload)
+        assert resp.status_code == 201
+
+        user = db_session.query(User).filter(User.email == payload["email"]).one()
+        company = db_session.get(Company, user.company_id)
+        assert company.currency == "CAD"
+
+    def test_register_accepts_explicit_currency(self, client, db_session):
+        payload = _valid_register_payload(currency="USD")
+        resp = client.post("/auth/register", json=payload)
+        assert resp.status_code == 201
+
+        user = db_session.query(User).filter(User.email == payload["email"]).one()
+        company = db_session.get(Company, user.company_id)
+        assert company.currency == "USD"
+
+    def test_register_rejects_unknown_currency(self, client):
+        payload = _valid_register_payload(currency="XYZ")
+        resp = client.post("/auth/register", json=payload)
+        assert resp.status_code == 422
+
 
 class TestLogin:
     def test_login_success_returns_token(self, client):

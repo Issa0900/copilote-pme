@@ -61,6 +61,10 @@ export async function updateCompanyAction(
     revenue_range: formData.get("revenue_range") || null,
     tools_used: formData.get("tools_used") || null,
     objectives: formData.getAll("objectives"),
+    // Jamais `null` : la colonne n'est pas nullable en base (contrairement à
+    // revenue_range) — sans valeur du sélecteur, on omet le champ plutôt que
+    // d'envoyer une devise vide que le backend rejetterait.
+    ...(formData.get("currency") ? { currency: formData.get("currency") } : {}),
   };
 
   const res = await apiFetch(`/companies/${companyId}`, {

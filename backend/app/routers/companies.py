@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.audit import log_company_updated
 from app.auth import get_current_user, require_company_access
 from app.database import get_db
 from app.models import Company, User
@@ -47,13 +48,18 @@ def update_company(
     company_id: uuid.UUID,
     payload: CompanyUpdate,
     db: Session = Depends(get_db),
-    _current_user: User = Depends(require_company_access),
+    current_user: User = Depends(require_company_access),
 ) -> Company:
     company = db.get(Company, company_id)
     if company is None:
         raise HTTPException(status_code=404, detail="Entreprise introuvable")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    updates = payload.model_dump(exclude_unset=True)
+    for field, value in updates.items():
         setattr(company, field, value)
     db.commit()
     db.refresh(company)
+    # Spec §64.25 : modifier le profil d'entreprise (objectifs, tranche de
+    # revenus, secteur) change l'interpretation de tous les KPI et du score de
+    # sante — la trace porte les champs touches, pas leurs valeurs.
+    log_company_updated(current_user.id, company_id, fields=sorted(updates))
     return company

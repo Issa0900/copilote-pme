@@ -51,6 +51,7 @@ export function KpiCard({
   targetLabel,
   formatTarget,
   variance,
+  currency = "CAD",
   trust,
   note,
   enterDelay = "0s",
@@ -73,6 +74,9 @@ export function KpiCard({
   formatTarget?: (value: number) => string;
   /** Analyse d'écarts : quelles catégories portent le mouvement de ce KPI. */
   variance?: KpiVariance | null;
+  /** Devise de l'entreprise (`Company.currency`), pour les montants de
+   * l'analyse d'écarts affichés par cette carte. */
+  currency?: string;
   /** Niveau de fiabilité de CETTE carte, quand il diffère du « Fait » annoncé
    * pour le reste de la grille (métrique estimée faute de donnée exacte). */
   trust?: TrustLevel;
@@ -156,7 +160,7 @@ export function KpiCard({
                 <span className="flex shrink-0 items-baseline gap-2 font-mono">
                   <span className={c.delta > 0 ? "text-danger" : "text-success"}>
                     {c.delta > 0 ? "+" : ""}
-                    {formatCurrency(c.delta)}
+                    {formatCurrency(c.delta, currency)}
                   </span>
                   <span className="w-12 text-right text-foreground-muted">
                     {c.share_of_change_pct.toFixed(0)} %

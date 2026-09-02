@@ -9,7 +9,7 @@ export default async function NouvelleEntreprisePage() {
   });
   const options: CompanyOptions = res.ok
     ? await res.json()
-    : { objectives: [], revenue_ranges: [] };
+    : { objectives: [], revenue_ranges: [], currencies: [] };
 
   return (
     <main className="mx-auto w-full max-w-2xl p-6 sm:p-8">

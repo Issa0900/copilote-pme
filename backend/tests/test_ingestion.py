@@ -15,6 +15,7 @@ from app.ingestion import (
     _normalize_header,
     _parse_amount,
     _parse_date,
+    find_unrecognized_columns,
     get_extension,
     load_dataframe,
     map_and_validate,
@@ -48,6 +49,27 @@ def test_map_columns_finds_synonyms_despite_accents():
         "category": "Catégorie",
         "description": "Description",
     }
+
+
+def test_find_unrecognized_columns_lists_only_unmapped_ones():
+    """Spec §64.5 : une colonne qu'aucun synonyme ne reconnaît doit être
+    signalée, pas écartée en silence."""
+    unrecognized = find_unrecognized_columns(
+        ["Date", "Montant", "Numero de facture", "Vendeur"]
+    )
+    assert unrecognized == ["Numero de facture", "Vendeur"]
+
+
+def test_find_unrecognized_columns_empty_when_all_mapped():
+    assert find_unrecognized_columns(["Date", "Montant", "Catégorie", "Description"]) == []
+
+
+def test_find_unrecognized_columns_flags_second_synonym_of_same_field():
+    """`_map_columns` ne retient qu'UNE colonne par champ : une seconde
+    colonne synonyme (ici deux colonnes de montant) est bien ignorée et doit
+    donc apparaître comme non exploitée."""
+    unrecognized = find_unrecognized_columns(["Date", "Montant", "Prix"])
+    assert unrecognized == ["Prix"]
 
 
 def test_parse_amount_handles_quebec_format():

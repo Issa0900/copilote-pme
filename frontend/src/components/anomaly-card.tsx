@@ -32,9 +32,12 @@ function Line({ label, children }: { label: string; children: React.ReactNode })
 
 export function AnomalyCard({
   anomaly,
+  currency = "CAD",
   enterDelay = "0s",
 }: {
   anomaly: Anomaly;
+  /** Devise de l'entreprise (`Company.currency`), pour le montant d'impact. */
+  currency?: string;
   enterDelay?: string;
 }) {
   const tone = SEVERITY_TONE[anomaly.severity];
@@ -63,7 +66,7 @@ export function AnomalyCard({
               className={`font-mono font-medium ${impact > 0 ? "text-danger" : "text-success"}`}
             >
               {impact > 0 ? "+" : ""}
-              {formatCurrency(impact)}
+              {formatCurrency(impact, currency)}
             </span>{" "}
             par rapport au comportement habituel de cette catégorie
           </Line>

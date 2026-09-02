@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.audit import log_login_failed, log_login_success, log_register
 from app.auth import create_access_token, hash_password, verify_password
 from app.database import get_db
 from app.models import Company, User
@@ -39,6 +40,7 @@ def register(request: Request, payload: UserRegister, db: Session = Depends(get_
     db.commit()
     db.refresh(user)
 
+    log_register(user.id, company.id)
     return TokenResponse(access_token=create_access_token(user))
 
 
@@ -63,9 +65,17 @@ def login(request: Request, payload: UserLogin, db: Session = Depends(get_db)) -
     # évite l'énumération de comptes.
     invalid_credentials = HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
 
+    # Spec §64.25 : les echecs de connexion sont journalises (une serie
+    # d'echecs est le signal d'attaque le plus elementaire). Le journal
+    # distingue "email inconnu" de "mot de passe invalide" — cette distinction
+    # reste interne, la reponse HTTP demeure volontairement identique dans les
+    # deux cas. Le mot de passe fourni n'est jamais journalise.
     if user is None:
+        log_login_failed(payload.email, "unknown_email")
         raise invalid_credentials
     if not verify_password(payload.password, user.hashed_password):
+        log_login_failed(payload.email, "bad_password")
         raise invalid_credentials
 
+    log_login_success(user.id, user.company_id)
     return TokenResponse(access_token=create_access_token(user))

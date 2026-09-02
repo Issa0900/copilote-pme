@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.constants import OBJECTIVE_CHOICES, REVENUE_RANGE_CHOICES
+from app.constants import CURRENCY_CHOICES, OBJECTIVE_CHOICES, REVENUE_RANGE_CHOICES
 
 
 class CompanyBase(BaseModel):
@@ -19,6 +19,18 @@ class CompanyBase(BaseModel):
     revenue_range: str | None = None
     tools_used: str | None = None
     objectives: list[str] | None = None
+    # Code ISO 4217 (spec §64.3). Défaut CAD, cohérent avec le server_default
+    # de la colonne (app/models.py) : un défaut porté ici aussi, plutôt que de
+    # compter sur le seul défaut base de données, pour qu'il apparaisse dans
+    # le schéma OpenAPI et dans toute construction de Company côté Python.
+    currency: str = "CAD"
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, value: str) -> str:
+        if value not in CURRENCY_CHOICES:
+            raise ValueError(f"devise invalide: {value}")
+        return value
 
     @field_validator("objectives")
     @classmethod
@@ -64,6 +76,18 @@ class CompanyUpdate(BaseModel):
     revenue_range: str | None = None
     tools_used: str | None = None
     objectives: list[str] | None = None
+    # `None` = champ non transmis (cf. `exclude_unset=True` dans
+    # routers/companies.py) : la colonne n'est pas nullable en base, donc ce
+    # champ n'est jamais volontairement mis à `null` une fois l'entreprise
+    # créée, seulement omis quand il n'est pas modifié.
+    currency: str | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, value: str | None) -> str | None:
+        if value is not None and value not in CURRENCY_CHOICES:
+            raise ValueError(f"devise invalide: {value}")
+        return value
 
     # Seuils de pilotage réglables par le dirigeant. Bornés pour éviter les
     # valeurs qui rendraient le score ininterprétable (marge cible nulle →
@@ -141,10 +165,39 @@ class ImportRead(BaseModel):
     error_message: str | None
 
 
+class ImportCreateRead(ImportRead):
+    """Réponse de POST /companies/{id}/imports.
+
+    Ajoute deux informations de transparence exigées par la spec (§64.5 et
+    §64.19) que le modèle `Import` ne stocke pas :
+
+    - `unrecognized_columns` : colonnes du fichier qu'aucun synonyme ne
+      reconnaît, jusqu'ici écartées en silence.
+    - `duplicates_skipped` : lignes valides non insérées parce qu'une
+      transaction identique (date, montant, description) existait déjà.
+
+    ATTENTION — ces deux champs sont **calculés à la volée et non persistés** :
+    ils ne sont disponibles que dans la réponse immédiate à l'upload. Un
+    rechargement de la page (GET /imports, qui renvoie `ImportRead`) les perd.
+    Les rendre durables suppose d'ajouter des colonnes au modèle `Import`
+    (`duplicates_skipped: int`, `unrecognized_columns: JSON`) et la migration
+    Alembic correspondante — hors périmètre de ce lot."""
+
+    unrecognized_columns: list[str] = []
+    duplicates_skipped: int = 0
+
+
 class CompanyKpis(BaseModel):
     revenue_total: float
     expenses_total: float
     net_result: float
+    # Marge nette en pourcentage (net_result / revenue_total * 100), calculée
+    # côté backend — c'est ici la définition unique de la marge dans tout le
+    # produit (spec §64.7 : les KPI du MVP sont calculés côté backend).
+    # `None` — et surtout pas 0.0 — quand il n'y a aucun revenu sur la
+    # période : une marge sans revenu n'existe pas, la renvoyer à 0 %
+    # présenterait un chiffre faux comme un fait (spec §64.8).
+    net_margin_pct: float | None
     transactions_count: int
     average_sale: float | None
     quarantined_count: int

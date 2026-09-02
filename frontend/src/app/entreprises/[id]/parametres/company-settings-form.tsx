@@ -70,6 +70,27 @@ export function CompanySettingsForm({
               ))}
             </select>
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium" htmlFor="currency">
+              Devise
+            </label>
+            <select
+              id="currency"
+              name="currency"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              defaultValue={company.currency}
+            >
+              {options.currencies.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-foreground-muted">
+              Utilisée pour afficher tous les montants. Ne convertit pas des
+              transactions dans plusieurs devises.
+            </p>
+          </div>
         </div>
 
         <TextArea label="Produits" name="products" defaultValue={company.products ?? ""} />

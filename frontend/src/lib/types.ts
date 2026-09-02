@@ -6,6 +6,7 @@ export type CompanyOption = {
 export type CompanyOptions = {
   objectives: CompanyOption[];
   revenue_ranges: string[];
+  currencies: string[];
 };
 
 export type Import = {
@@ -38,6 +39,11 @@ export type CompanyKpis = {
   revenue_total: number;
   expenses_total: number;
   net_result: number;
+  /** Marge nette en pourcentage, calculée et arrondie (1 décimale) par le
+   * backend — à afficher telle quelle, jamais recalculée côté frontend
+   * (spec §64.29). `null` quand il n'y a aucun revenu sur la période : une
+   * marge n'a alors pas de sens, et surtout pas la valeur 0. */
+  net_margin_pct: number | null;
   transactions_count: number;
   average_sale: number | null;
   quarantined_count: number;
@@ -197,6 +203,9 @@ export type Company = {
   revenue_range: string | null;
   tools_used: string | null;
   objectives: string[] | null;
+  /** Code ISO 4217 (spec §64.3) — à passer à `formatCurrency`, jamais à
+   * recalculer ou deviner côté écran. */
+  currency: string;
   created_at: string;
   updated_at: string;
 

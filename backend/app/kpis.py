@@ -87,10 +87,25 @@ def compute_company_kpis(
     quarantined_count = int(row.quarantined_count)
     period_start, period_end = row.period_start, row.period_end
 
+    net_result = revenue_total - expenses_total
+
+    # Marge nette : pur calcul Python sur des valeurs DÉJÀ agrégées ci-dessus —
+    # aucune requête supplémentaire, la règle « une seule requête » tient.
+    # Division par zéro (spec §64.8) : sans revenu, la marge n'est pas 0 %,
+    # elle n'existe pas — on renvoie None et c'est à l'affichage de dire
+    # « non calculable » plutôt que d'annoncer un 0 % faux.
+    # Arrondi à 1 décimale, cohérent avec les autres pourcentages du backend
+    # (`variance.py` arrondit `delta_pct` et `share_of_change_pct` à 1
+    # décimale ; les montants, eux, sont à 2). C'est aussi la précision déjà
+    # affichée à l'écran, donc le backend n'expose pas plus de chiffres
+    # significatifs que le calcul n'en supporte.
+    net_margin_pct = round((net_result / revenue_total) * 100, 1) if revenue_total else None
+
     return CompanyKpis(
         revenue_total=revenue_total,
         expenses_total=expenses_total,
-        net_result=revenue_total - expenses_total,
+        net_result=net_result,
+        net_margin_pct=net_margin_pct,
         transactions_count=transactions_count,
         # Panier moyen : spec §14 le définit comme CA / nombre de commandes.
         # Le modèle n'a pas d'entité « commande » — une transaction n'est pas

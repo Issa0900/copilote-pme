@@ -161,6 +161,13 @@ routers) and `ix_transactions_import_id` (the `routers/imports.py` pattern) — 
 applied and verified reversible. They also blunt the cost of `health.py` now loading history without a lower
 bound.
 
+**Known perf debt from item 3's fix**: because the date bounds moved out of the outer `WHERE` and into each
+`CASE`, `compute_company_kpis` now scans **every** row of the company even on a 7-day view. The composite
+index still serves the `company_id, status` prefix but can no longer bound the date range. This was the price
+of counting undated quarantine rows within the single-query rule; the alternative was a second dedicated
+query. Harmless at MVP scale (a few thousand rows per tenant) — but this is the first place to revisit if a
+tenant reaches hundreds of thousands of transactions.
+
 ### Deliberate deviations from the older docs
 
 - `skill/SKILL.md` forbids circular gauges for scores; spec §7/§39 asks for a radial score. The spec is newer — follow it, and treat that skill file's palette as stale too.

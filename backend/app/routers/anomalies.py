@@ -1,7 +1,7 @@
 import uuid
 from datetime import date as date_type
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.anomalies import detect_anomalies
@@ -27,10 +27,22 @@ def _get_company_or_404(company_id: uuid.UUID, db: Session) -> Company:
 @router.get("/anomalies", response_model=list[AnomalyRead])
 def get_company_anomalies(
     company_id: uuid.UUID,
+    response: Response,
     start_date: date_type | None = Query(None),
     end_date: date_type | None = Query(None),
     db: Session = Depends(get_db),
 ) -> list[AnomalyRead]:
+    """Anomalies détectées sur la période.
+
+    Volontairement SANS `limit`/`offset`, contrairement aux autres listes
+    (spec §64.24) : `detect_anomalies` plafonne déjà sa sortie à
+    `MAX_ANOMALIES` (20), et ce plafond n'est pas une pagination mais une
+    décision produit — au-delà, la liste cesse d'être un plan d'action et
+    devient du bruit. Ajouter une pagination sur 20 éléments au maximum
+    donnerait au frontend l'illusion qu'il existe une page 2, alors que le
+    reste n'est pas tronqué : il n'est pas calculé. `X-Total-Count` est tout
+    de même publié, pour la cohérence avec les autres listes.
+    """
     _get_company_or_404(company_id, db)
 
     # Toujours l'historique complet validé : le détecteur a besoin de
@@ -44,6 +56,8 @@ def get_company_anomalies(
     )
 
     anomalies = detect_anomalies(transactions, period_start=start_date, period_end=end_date)
+    # len(anomalies) <= MAX_ANOMALIES par construction (cf. docstring).
+    response.headers["X-Total-Count"] = str(len(anomalies))
     return [
         AnomalyRead(
             type=a.type,

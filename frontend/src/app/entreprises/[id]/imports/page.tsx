@@ -1,6 +1,8 @@
 import { Gauge } from "@/components/gauge";
+import { ListPagination } from "@/components/list-pagination";
 import { Badge, Card, EmptyState, LinkButton, PageHeader, SectionHeading } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
+import { PAGE_SIZES, parseOffset, readPageInfo } from "@/lib/pagination";
 import type { Import } from "@/lib/types";
 import { UploadForm } from "./upload-form";
 
@@ -30,13 +32,28 @@ const CONNECTORS = ["Square", "Lightspeed", "Banque"];
 
 export default async function CompanyImportsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ offset?: string }>;
 }) {
   const { id } = await params;
+  const { offset: rawOffset } = await searchParams;
 
-  const res = await apiFetch(`/companies/${id}/imports`);
+  // L'historique est borné par le backend (spec §64.24) : on demande une page
+  // explicite et on lit `X-Total-Count` pour ne jamais présenter un début
+  // d'historique comme l'historique complet.
+  const limit = PAGE_SIZES.imports;
+  const offset = parseOffset(rawOffset);
+
+  const res = await apiFetch(`/companies/${id}/imports?limit=${limit}&offset=${offset}`);
+  // Un échec de chargement ne doit jamais se confondre avec « aucun import » :
+  // afficher un historique vide laisserait croire qu'aucune donnée n'a jamais
+  // été importée, et pourrait pousser à réimporter un fichier déjà traité
+  // (spec §64.22).
+  const importsFailed = !res.ok;
   const imports: Import[] = res.ok ? await res.json() : [];
+  const page = readPageInfo(res, imports.length, offset, limit);
 
   return (
     <div className="space-y-8">
@@ -53,11 +70,29 @@ export default async function CompanyImportsPage({
 
       <div className="animate-enter" style={{ "--enter-delay": "0.05s" } as React.CSSProperties}>
         <SectionHeading>Historique des imports</SectionHeading>
-        {imports.length === 0 ? (
+        {importsFailed ? (
+          <Card tone="danger">
+            <p className="text-sm font-medium">
+              Impossible de charger l&apos;historique des imports.
+            </p>
+            <p className="mt-1 text-sm opacity-90">
+              Le serveur n&apos;a pas répondu : cette liste est indisponible, ce
+              n&apos;est pas un historique vide — n&apos;en concluez pas
+              qu&apos;un fichier n&apos;a pas été importé et attendez avant de
+              le réimporter.{" "}
+              <a href={`/entreprises/${id}/imports`} className="underline">
+                Recharger la page
+              </a>
+              . Si l&apos;erreur persiste, vérifiez votre connexion réseau, puis
+              signalez-la à votre administrateur en précisant l&apos;heure.
+            </p>
+          </Card>
+        ) : imports.length === 0 ? (
           <EmptyState>Aucun import pour l&apos;instant.</EmptyState>
         ) : (
-          <ul className="space-y-2">
-            {imports.map((imp) => (
+          <>
+            <ul className="space-y-2">
+              {imports.map((imp) => (
               <Card key={imp.id}>
                 <div className="flex items-center justify-between">
                   <p className="flex items-center gap-2 font-medium">
@@ -98,8 +133,15 @@ export default async function CompanyImportsPage({
                   </div>
                 )}
               </Card>
-            ))}
-          </ul>
+              ))}
+            </ul>
+            <ListPagination
+              page={page}
+              basePath={`/entreprises/${id}/imports`}
+              label="imports"
+              note="Cet historique n'est pas affiché en entier — un fichier déjà importé peut se trouver sur une autre page."
+            />
+          </>
         )}
       </div>
 

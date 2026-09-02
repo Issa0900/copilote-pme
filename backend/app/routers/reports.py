@@ -2,7 +2,8 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Callable
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -24,6 +25,14 @@ router = APIRouter(
     tags=["reports"],
     dependencies=[Depends(require_company_access)],
 )
+
+
+# Pagination de l'historique des rapports (spec §64.24). Un rapport par jour,
+# par semaine et par mois : ~400 lignes par an au maximum. Un défaut de 200
+# couvre donc environ six mois d'historique en une page, et le plafond de 1000
+# reste sous le volume de deux ans tout en empêchant un `limit=999999`.
+DEFAULT_REPORTS_LIMIT = 200
+MAX_REPORTS_LIMIT = 1000
 
 
 def _get_company_or_404(company_id: uuid.UUID, db: Session) -> Company:
@@ -154,11 +163,27 @@ def get_monthly_report(company_id: uuid.UUID, db: Session = Depends(get_db)) -> 
 
 
 @router.get("", response_model=list[ReportRead])
-def list_reports(company_id: uuid.UUID, db: Session = Depends(get_db)) -> list[Report]:
+def list_reports(
+    company_id: uuid.UUID,
+    response: Response,
+    limit: int = Query(DEFAULT_REPORTS_LIMIT, ge=1),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[Report]:
     _get_company_or_404(company_id, db)
+    limit = min(limit, MAX_REPORTS_LIMIT)
+
+    base = db.query(Report).filter(Report.company_id == company_id)
+    # Total réel avant découpage (cf. `X-Total-Count` dans routers/imports.py).
+    response.headers["X-Total-Count"] = str(
+        base.with_entities(func.count(Report.id)).scalar() or 0
+    )
+    # Tri sur (period, type) : plusieurs rapports peuvent partager la même
+    # période (quotidien / hebdomadaire / mensuel), il faut un ordre total
+    # stable pour que la pagination ne mélange pas les pages.
     return (
-        db.query(Report)
-        .filter(Report.company_id == company_id)
-        .order_by(Report.period.desc())
+        base.order_by(Report.period.desc(), Report.type)
+        .limit(limit)
+        .offset(offset)
         .all()
     )
