@@ -2013,3 +2013,460 @@ Le dashboard est réussi si un dirigeant peut, en moins de quelques minutes :
 > **Gescop ne doit pas seulement montrer les données de l'entreprise.**
 >
 > **Gescop doit aider l'entreprise à savoir quoi faire avec ses données.**
+
+---
+
+# 64. Critères d'acceptation du MVP
+
+Cette section définit les conditions minimales permettant de considérer le MVP de Gescop comme fonctionnel, testable et livrable.
+
+Le MVP n'a pas besoin de contenir toutes les fonctionnalités avancées prévues dans la vision complète. Il doit cependant démontrer la boucle fondamentale de Gescop :
+
+```text
+Connecter → Importer → Normaliser → Calculer → Détecter
+→ Expliquer → Recommander → Agir → Mesurer
+```
+
+## 64.1 Critères globaux de validation
+
+Le MVP est accepté uniquement si :
+
+- un utilisateur peut créer un compte ;
+- un utilisateur peut créer ou sélectionner une entreprise ;
+- les données d'au moins une source peuvent être importées ;
+- les données importées sont validées avant analyse ;
+- les données sont normalisées ;
+- les KPI principaux sont calculés automatiquement ;
+- le Dashboard affiche les KPI sans intervention manuelle du développeur ;
+- les données peuvent être filtrées par période ;
+- les variations par rapport à une période précédente sont calculées ;
+- au moins un système de détection d'anomalies fonctionne ;
+- au moins une alerte peut être générée automatiquement ;
+- l'alerte contient une explication basée sur les données ;
+- une recommandation peut être générée à partir d'une alerte ;
+- une recommandation peut être transformée en action ;
+- une action peut être marquée comme terminée ;
+- le résultat avant/après peut être affiché ;
+- aucune donnée d'une entreprise ne peut être visible par une autre entreprise ;
+- les erreurs importantes sont affichées clairement à l'utilisateur ;
+- les tests principaux passent ;
+- le parcours complet peut être exécuté sans intervention technique.
+
+## 64.2 Authentification et accès
+
+L'utilisateur doit pouvoir créer un compte, se connecter, se déconnecter, récupérer son accès, et accéder uniquement aux données auxquelles il est autorisé.
+
+**Critères d'acceptation**
+
+- Une inscription valide crée un utilisateur.
+- Un utilisateur existant peut se connecter.
+- Un mauvais mot de passe affiche une erreur claire.
+- Une session non authentifiée ne peut pas accéder au Dashboard.
+- La déconnexion invalide correctement la session.
+- Les endpoints backend protégés refusent les requêtes non autorisées.
+- Les données sont isolées par `company_id` / tenant.
+- Un utilisateur ne peut jamais récupérer les données d'une autre entreprise en modifiant un ID dans l'URL ou l'API.
+
+## 64.3 Création de l'entreprise
+
+**Champs MVP :** nom, secteur, devise, pays/région, taille approximative.
+
+**Critères d'acceptation**
+
+- Une entreprise peut être créée.
+- L'entreprise est associée au bon utilisateur.
+- La devise est enregistrée.
+- Les paramètres de l'entreprise sont persistés en base.
+- L'utilisateur est redirigé vers l'onboarding.
+
+## 64.4 Onboarding
+
+```text
+Créer entreprise → Ajouter une source → Importer / synchroniser
+→ Valider les données → Calculer les KPI → Afficher le Dashboard
+```
+
+**Critères d'acceptation**
+
+- L'utilisateur comprend clairement la prochaine étape.
+- Une progression de l'onboarding est visible.
+- L'utilisateur peut ignorer une étape lorsque cela est prévu.
+- Une erreur de connexion/import est expliquée.
+- Après une première importation valide, l'utilisateur peut accéder au Dashboard.
+- Le Dashboard n'affiche pas de faux KPI lorsqu'aucune donnée n'existe.
+
+## 64.5 Importation de données
+
+Le MVP doit supporter au minimum CSV, Excel, et au moins une intégration externe prioritaire. La première version peut utiliser CSV/Excel comme source universelle si les connecteurs API ne sont pas encore terminés.
+
+**Critères d'acceptation**
+
+- Un fichier valide peut être importé.
+- Les formats autorisés sont contrôlés.
+- La taille maximale du fichier est contrôlée.
+- Les colonnes sont détectées.
+- Les colonnes inconnues sont signalées.
+- Les dates sont correctement reconnues.
+- Les montants sont correctement reconnus.
+- Les lignes invalides sont signalées.
+- Les doublons peuvent être détectés.
+- L'utilisateur peut voir un aperçu avant validation.
+- L'importation ne crée pas de données partielles silencieusement en cas d'échec.
+- L'importation est journalisée.
+
+## 64.6 Normalisation
+
+Transformer les données provenant de différentes sources dans un format commun (`"Date de vente"`, `"sale_date"`, `"transaction_date"` → `sale_date`).
+
+**Critères d'acceptation**
+
+- Les dates utilisent un format interne uniforme.
+- Les montants utilisent une devise définie.
+- Les noms de colonnes sont normalisés.
+- Les catégories peuvent être harmonisées.
+- Les produits similaires peuvent être identifiés.
+- Les clients peuvent être identifiés de façon cohérente.
+- Les données RAW restent conservées.
+- Les données normalisées sont séparées des données RAW.
+- Une erreur de normalisation ne détruit jamais les données originales.
+
+## 64.7 KPI MVP
+
+Le MVP doit calculer au minimum : chiffre d'affaires, dépenses, profit net, marge nette, nombre de ventes/commandes, panier moyen, et trésorerie lorsque les données nécessaires sont disponibles.
+
+**Critères d'acceptation** — pour chaque KPI :
+
+- la formule est définie ;
+- le calcul est effectué côté backend ;
+- la valeur est correcte ;
+- la période est identifiable ;
+- la période précédente est calculable ;
+- la variation est calculée ;
+- l'objectif peut être affiché lorsqu'il existe ;
+- la source des données est identifiable ;
+- la date de dernière mise à jour est disponible ;
+- le KPI indique lorsqu'il manque suffisamment de données ;
+- le frontend ne recalcule pas les valeurs financières critiques.
+
+## 64.8 KPI — critères de précision
+
+```text
+Résultat attendu = Résultat backend = Résultat vérifié sur données de test
+```
+
+- Les formules sont couvertes par des unit tests.
+- Les cas de division par zéro sont gérés.
+- Les valeurs nulles sont gérées.
+- Les périodes sans données sont gérées.
+- Les remboursements sont traités selon les règles définies.
+- Les montants négatifs sont traités correctement.
+- Les arrondis sont cohérents.
+- Les devises sont respectées.
+
+## 64.9 Dashboard principal
+
+```text
+Situation globale → Score de santé → KPI principaux
+→ Performance → Priorités → Alertes → Recommandations
+```
+
+**Critères d'acceptation**
+
+- Le Dashboard se charge avec une entreprise valide.
+- Les KPI correspondent aux données sélectionnées.
+- Le sélecteur de période fonctionne.
+- Les composants réagissent aux filtres.
+- Aucun graphique ne présente de données appartenant à une autre période.
+- Les états de chargement sont visibles.
+- Les états vides sont explicites.
+- Les erreurs sont affichées sans casser toute la page.
+- Les données sont actualisées après synchronisation.
+
+## 64.10 Score de santé
+
+Le score peut commencer avec un nombre limité de dimensions : Rentabilité, Ventes, Dépenses, Trésorerie.
+
+**Critères d'acceptation**
+
+- Le score est compris entre 0 et 100.
+- Le calcul est effectué côté backend.
+- Les dimensions contribuant au score sont visibles.
+- Le statut est déterminé automatiquement.
+- Une situation critique peut modifier le statut global.
+- Le score ne change pas arbitrairement.
+- Le score peut être recalculé après mise à jour des données.
+- La logique du score est documentée.
+
+## 64.11 Graphiques MVP
+
+1. **CA dans le temps** — line chart
+2. **Dépenses par catégorie** — horizontal bar chart
+3. **Profit / CA / dépenses** — line chart
+4. **Performance par canal** — bar chart
+5. **Top produits** — horizontal bar chart
+6. **Prévision** — line chart + intervalle, si le module de prévision est inclus dans le MVP
+
+**Critères d'acceptation**
+
+- Chaque graphique possède un titre clair.
+- Les axes sont compréhensibles.
+- Les unités sont affichées.
+- Les périodes sont visibles.
+- Les tooltips donnent les valeurs exactes.
+- Les graphiques répondent aux filtres globaux.
+- Les données peuvent être comparées lorsque pertinent.
+- Aucun graphique n'est utilisé uniquement à des fins décoratives.
+
+## 64.12 Détection d'anomalies
+
+Le MVP doit contenir au minimum 3 règles déterministes.
+
+```text
+Marge    : si marge < objectif ET variation négative > seuil → alerte
+Dépenses : si dépenses catégorie > moyenne historique + seuil → alerte
+Ventes   : si ventes actuelles < moyenne historique - seuil → alerte
+```
+
+**Critères d'acceptation**
+
+- Les règles sont exécutées automatiquement.
+- Une règle possède un seuil configurable.
+- Les règles utilisent des données réelles.
+- Une anomalie ne génère pas plusieurs alertes identiques inutilement.
+- Les alertes peuvent être classées par sévérité.
+- Les règles peuvent être testées indépendamment.
+- Les résultats des règles sont traçables.
+
+## 64.13 Alertes
+
+Chaque alerte MVP doit contenir : titre, sévérité, KPI, valeur, variation, impact, cause probable, confiance, date, action recommandée.
+
+**Critères d'acceptation**
+
+- Une alerte peut être générée automatiquement.
+- Une alerte indique clairement le problème.
+- La valeur actuelle est affichée.
+- La comparaison est affichée.
+- L'impact est affiché lorsque calculable.
+- La cause est identifiée comme « probable » lorsqu'elle n'est pas certaine.
+- Le niveau de confiance est affiché lorsque l'analyse utilise des hypothèses.
+- L'utilisateur peut ouvrir le détail.
+- L'utilisateur peut ignorer ou clôturer l'alerte.
+
+## 64.14 Explication par l'IA
+
+L'IA ne doit pas calculer les KPI financiers fondamentaux. Elle doit exploiter les résultats calculés par le backend.
+
+**Critères d'acceptation**
+
+- L'IA reçoit des données structurées.
+- L'IA ne peut pas inventer une transaction.
+- Les chiffres présentés correspondent aux données backend.
+- Les hypothèses sont identifiées comme telles.
+- La réponse peut indiquer les données utilisées.
+- Une réponse IA échouée ne bloque pas le Dashboard.
+- Les erreurs IA sont gérées proprement.
+
+## 64.15 Recommandations
+
+```text
+Problème → Preuve → Impact → Action → Résultat attendu
+```
+
+**Critères d'acceptation**
+
+- Une recommandation possède une origine identifiable.
+- Elle est reliée à une alerte ou analyse.
+- Elle cite les indicateurs utilisés.
+- Elle fournit une action concrète.
+- Elle indique l'impact estimé lorsqu'il est calculable.
+- Elle distingue les faits des hypothèses.
+- L'utilisateur peut accepter la recommandation.
+- L'utilisateur peut la rejeter.
+- L'utilisateur peut créer une tâche à partir d'elle.
+
+## 64.16 Centre d'actions
+
+**Critères d'acceptation**
+
+- Une recommandation peut devenir une action.
+- Une action possède un titre, un statut, une priorité, une échéance, un assigné.
+- Une action peut être marquée comme terminée.
+- L'origine de l'action est conservée.
+- Une action terminée reste consultable.
+
+## 64.17 Mesure avant / après
+
+**Critères d'acceptation**
+
+- Une action peut être associée à un KPI.
+- La valeur avant l'action est conservée.
+- La valeur après l'action peut être calculée.
+- La variation est calculée.
+- L'objectif peut être comparé au résultat.
+- Le résultat peut être affiché dans l'action.
+
+## 64.18 Sources de données
+
+- Chaque donnée analytique peut être reliée à une source.
+- La dernière synchronisation est visible.
+- Une source en erreur est identifiable.
+- Une source déconnectée est identifiable.
+- L'utilisateur peut lancer une synchronisation lorsqu'elle est disponible.
+- Les erreurs de synchronisation sont journalisées.
+
+## 64.19 Qualité des données
+
+Le MVP doit au minimum détecter : données manquantes, doublons, données anciennes, colonnes inconnues, incohérences importantes.
+
+**Critères d'acceptation**
+
+- Un score de qualité peut être calculé.
+- Les problèmes sont détaillés.
+- Chaque problème possède une description.
+- Une action corrective est proposée lorsqu'elle est connue.
+- Une mauvaise qualité des données réduit le niveau de confiance du KPI.
+
+## 64.20 Filtres
+
+Période, source, canal lorsque disponible, catégorie lorsque disponible.
+
+- Modifier la période met à jour les KPI, les graphiques et les alertes lorsque pertinent.
+- Les filtres sont cohérents entre les composants.
+- L'utilisateur peut réinitialiser les filtres.
+
+## 64.21 Drill-down
+
+Le MVP doit proposer au moins un parcours de drill-down (ex. `CA → Canal → Produit → Commande`).
+
+- Un KPI est cliquable.
+- L'utilisateur peut consulter le détail.
+- Le filtre sélectionné est conservé.
+- Le niveau de détail est cohérent avec le KPI.
+- L'utilisateur peut revenir au niveau précédent.
+
+## 64.22 États UI
+
+Chaque composant doit gérer 5 états : `Loading`, `Success`, `Empty`, `Error`, `Stale`.
+
+- Aucun écran blanc en cas d'erreur backend.
+- Données anciennes signalées lorsque nécessaire.
+
+## 64.23 Responsive
+
+Desktop (4 colonnes max selon la section), tablette (2 colonnes), mobile (1 colonne).
+
+- Aucun élément critique n'est inaccessible.
+- Les KPI restent lisibles, les graphiques utilisables, les actions principales accessibles.
+- La navigation mobile fonctionne.
+
+## 64.24 Performance
+
+- Dashboard initial : idéalement < 2–3 s sur données pré-calculées.
+- API KPI : idéalement < 500 ms pour les requêtes courantes.
+- Navigation entre vues principales : rapide et sans rechargement complet.
+- Calculs lourds : background jobs.
+- Les KPI ne déclenchent pas inutilement plusieurs requêtes identiques.
+- Les requêtes principales sont indexées, les listes importantes paginées, le cache utilisé lorsqu'approprié.
+
+## 64.25 Sécurité et isolation multi-tenant
+
+**Critère bloquant du MVP.**
+
+- Chaque donnée possède une relation avec une entreprise.
+- Les requêtes backend filtrent par tenant.
+- Les endpoints vérifient les permissions.
+- Un utilisateur ne peut pas accéder à une autre entreprise.
+- Les secrets/API keys ne sont jamais exposés au frontend.
+- Les tokens de connecteurs sont stockés de manière sécurisée.
+- Les actions importantes sont journalisées.
+
+## 64.26 Tests MVP
+
+**Unit tests obligatoires :** calcul CA, dépenses, profit, marge, panier moyen, variations, score santé, règles d'alertes, normalisation, calcul de priorité.
+
+**Integration tests :** import, PostgreSQL, API KPI, pipeline RAW → NORMALIZED → ANALYTICS, génération d'alertes.
+
+**E2E obligatoire :**
+
+```text
+Créer compte → Créer entreprise → Importer CSV → Valider données
+→ Dashboard → Consulter KPI → Détection anomalie → Alerte → Analyse
+→ Recommandation → Créer action → Terminer action → Mesurer résultat
+```
+
+## 64.27 Critères d'acceptation du parcours complet
+
+Le MVP est fonctionnel si un testeur **non technique** peut réaliser ce parcours sans intervention du développeur :
+
+1. Se connecter
+2. Créer une entreprise
+3. Importer un fichier
+4. Voir la qualité des données
+5. Voir les KPI
+6. Changer la période
+7. Identifier une anomalie
+8. Ouvrir l'alerte
+9. Comprendre la cause probable
+10. Voir l'impact
+11. Voir la recommandation
+12. Créer une action
+13. Terminer l'action
+14. Consulter le résultat
+
+## 64.28 Critères de qualité UX
+
+- L'utilisateur comprend immédiatement où il se trouve.
+- Les KPI principaux sont visibles sans scroll excessif.
+- Les problèmes importants sont plus visibles que les informations secondaires.
+- Les graphiques ne sont jamais utilisés sans objectif.
+- Les CTA sont compréhensibles.
+- Les messages d'erreur sont actionnables.
+- Les termes techniques sont évités dans l'interface destinée au dirigeant.
+- Une recommandation indique toujours pourquoi elle est proposée.
+- Une hypothèse IA n'est jamais présentée comme une certitude.
+- L'utilisateur peut retrouver la donnée ayant servi à une conclusion.
+
+## 64.29 Critères de non-acceptation
+
+Le MVP doit être **refusé** si l'un des éléments suivants est présent :
+
+- données incorrectes dans les KPI critiques ;
+- fuite de données entre entreprises ;
+- calcul financier effectué uniquement côté frontend ;
+- alertes inventées ou basées sur des données inexistantes ;
+- recommandations sans preuve ;
+- IA présentant une hypothèse comme un fait ;
+- impossibilité de savoir d'où vient un KPI ;
+- Dashboard inutilisable lorsqu'une source est vide ;
+- absence de gestion des erreurs ;
+- impossibilité de tester le parcours principal ;
+- fonctionnalités critiques dépendant d'une intervention manuelle du développeur.
+
+## 64.30 Definition of Done — fonctionnalité
+
+```text
+Code → API → UI → Validation données
+→ États Loading / Empty / Error → Tests → Sécurité
+→ Documentation → Validation UX
+```
+
+Une fonctionnalité ne doit pas être considérée comme terminée simplement parce que « le frontend fonctionne ».
+
+## 64.31 Definition of Done — MVP complet
+
+Le MVP est DONE lorsque : le parcours principal fonctionne de bout en bout ; les données peuvent être importées et normalisées ; les KPI sont calculés correctement ; le Dashboard et les graphiques principaux fonctionnent ; les anomalies sont détectées ; les alertes fonctionnent ; l'IA peut expliquer les principaux signaux ; les recommandations sont générées et peuvent devenir des actions ; les actions peuvent être suivies ; les résultats avant/après peuvent être mesurés ; les données sont isolées par entreprise ; les tests critiques passent ; les erreurs critiques sont gérées ; l'expérience est utilisable par un dirigeant sans formation technique.
+
+## 64.32 Priorisation des critères
+
+**P0 — Bloquant.** Authentification · Isolation multi-tenant · Importation · Normalisation · KPI corrects · Dashboard · Alertes · Sécurité · Gestion des erreurs · Tests critiques
+
+**P1 — Nécessaire.** Score santé · Recommandations · Assistant IA · Drill-down · Actions · Qualité des données · Mesure avant/après · Prévisions simples
+
+**P2 — Post-MVP.** Simulations avancées · Cohortes avancées · CRM complet · RH complet · Cartographie · Automatisations complexes · Connecteurs avancés · Rapports très personnalisables · Agents IA autonomes
+
+## 64.33 Test ultime du MVP
+
+> « Si je donne Gescop à un dirigeant de PME qui ne connaît pas le système, peut-il connecter ses données, comprendre sa situation, identifier un problème important, comprendre pourquoi il existe, voir son impact et savoir quoi faire ensuite ? »
+
+Si la réponse est oui, le MVP démontre la proposition de valeur fondamentale de Gescop. Si la réponse est non, il faut prioriser l'amélioration du parcours décisionnel plutôt que d'ajouter davantage de graphiques ou de fonctionnalités.
