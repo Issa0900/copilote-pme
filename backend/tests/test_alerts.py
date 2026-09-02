@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from app.alerts import (
     LEVEL_RANK,
@@ -183,23 +183,30 @@ def test_get_company_alerts_exposes_category_field(
     # la catégorie de la transaction source ; une alerte issue d'un import
     # échoué n'a pas de catégorie pertinente (category: null).
     #
-    # Le détecteur exige une baseline d'au moins MIN_BASELINE_SAMPLE (8)
-    # transactions datées avant la fenêtre récente (30 jours précédant la
-    # date la plus récente des données de l'entreprise) ; l'outlier doit être
-    # daté dans cette fenêtre récente pour être testé contre la baseline.
+    # `_compute_company_alerts` détecte désormais sur la même fenêtre par
+    # défaut que le tableau de bord (`default_recent_period`, 30 derniers
+    # jours ancrés sur aujourd'hui — spec §64.32, Alertes est P0). Le
+    # détecteur exige une baseline d'au moins MIN_BASELINE_SAMPLE (8)
+    # transactions datées AVANT cette fenêtre ; l'outlier doit être daté DANS
+    # la fenêtre pour être testé contre la baseline.
     client, _user, company = authed_client
     imp = make_import(company.id)
 
-    for i in range(1, 9):
+    today = date.today()
+    for i in range(8):
         make_transaction(
-            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 1, i)
+            company.id,
+            imp.id,
+            amount=-100,
+            category="Salaires",
+            date=today - timedelta(days=60 + i),
         )
     for _ in range(12):
         make_transaction(
-            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 6, 15)
+            company.id, imp.id, amount=-100, category="Salaires", date=today - timedelta(days=5)
         )
     outlier = make_transaction(
-        company.id, imp.id, amount=-10_000, category="Salaires", date=date(2024, 6, 15)
+        company.id, imp.id, amount=-10_000, category="Salaires", date=today - timedelta(days=5)
     )
 
     make_import(company.id, status="echoue", error_message="fichier corrompu")
@@ -223,16 +230,21 @@ def test_get_company_alerts_exposes_why_impact_action_and_quarantine_reasons(
     client, _user, company = authed_client
     imp = make_import(company.id)
 
-    for i in range(1, 9):
+    today = date.today()
+    for i in range(8):
         make_transaction(
-            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 1, i)
+            company.id,
+            imp.id,
+            amount=-100,
+            category="Salaires",
+            date=today - timedelta(days=60 + i),
         )
     for _ in range(12):
         make_transaction(
-            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 6, 15)
+            company.id, imp.id, amount=-100, category="Salaires", date=today - timedelta(days=5)
         )
     outlier = make_transaction(
-        company.id, imp.id, amount=-10_000, category="Salaires", date=date(2024, 6, 15)
+        company.id, imp.id, amount=-10_000, category="Salaires", date=today - timedelta(days=5)
     )
 
     quarantined_import = make_import(company.id, rows_processed=2, rows_quarantined=2)

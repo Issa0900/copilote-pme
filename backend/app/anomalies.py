@@ -61,6 +61,28 @@ MARGIN_DECLINE_THRESHOLD_POINTS = 3.0
 # import dans l'autre sens créerait un cycle.
 DEFAULT_TARGET_MARGIN_PCT = 20.0
 
+# Fenêtre par défaut pour un appelant sans notion de période propre
+# (recommendations.py::sync_recommendations, routers/alerts.py) — calquée
+# EXACTEMENT sur la vue par défaut du tableau de bord
+# (frontend/.../page.tsx::computeRange, "30j") pour qu'Alertes et
+# Recommandations montrent les mêmes écarts que ce que le dirigeant voit en
+# arrivant sur le Dashboard, au lieu du découpage médian de tout l'historique
+# utilisé jusqu'ici. Ancrée sur l'horloge murale (`date.today()`), PAS sur la
+# donnée la plus récente comme `RECENT_WINDOW_DAYS` ci-dessus — délibéré : si
+# les imports prennent du retard, ces listes doivent se vider honnêtement
+# plutôt que de prétendre rester à jour (spec §64.29).
+DEFAULT_PERIOD_DAYS = 30
+
+
+def default_recent_period() -> tuple[date, date]:
+    """`(period_start, period_end)` des `DEFAULT_PERIOD_DAYS` derniers jours,
+    aujourd'hui inclus — même calcul que le frontend (`end = aujourd'hui`,
+    `start = end - (jours - 1)`)."""
+    end = date.today()
+    start = end - timedelta(days=DEFAULT_PERIOD_DAYS - 1)
+    return start, end
+
+
 MONTHS_FR = [
     "janvier",
     "février",
