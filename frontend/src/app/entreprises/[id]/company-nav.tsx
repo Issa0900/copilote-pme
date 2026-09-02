@@ -16,18 +16,43 @@ import {
 } from "@/components/icons";
 import type { Company } from "@/lib/types";
 
-const TABS = [
-  { href: "", label: "Tableau de bord", Icon: HomeIcon },
-  { href: "/imports", label: "Import", Icon: ImportIcon },
-  { href: "/alertes", label: "Alertes", countKey: "alerts", Icon: AlertIcon },
+// Navigation groupée par nature d'usage plutôt qu'en liste plate : le
+// dirigeant distingue d'un coup d'œil « ce que le système a compris »
+// (Intelligence) de « ce que je lui ai donné » (Données).
+//
+// Seules les destinations qui existent réellement figurent ici. Les rubriques
+// annoncées à la feuille de route mais sans écran ni donnée (Performance,
+// Marketing, RH, Prévisions, Simulations, Permissions...) ne sont volontairement
+// pas listées : un onglet mort donnerait une fausse impression d'avancement.
+const NAV_SECTIONS = [
   {
-    href: "/recommandations",
-    label: "Recommandations",
-    countKey: "recommendations",
-    Icon: RecommendationIcon,
+    title: null,
+    items: [{ href: "", label: "Tableau de bord", Icon: HomeIcon }],
   },
-  { href: "/rapport", label: "Rapports", Icon: ReportIcon },
-  { href: "/parametres", label: "Paramètres", Icon: SettingsIcon },
+  {
+    title: "Intelligence",
+    items: [
+      { href: "/alertes", label: "Alertes", countKey: "alerts", Icon: AlertIcon },
+      {
+        href: "/recommandations",
+        label: "Recommandations",
+        countKey: "recommendations",
+        Icon: RecommendationIcon,
+      },
+    ],
+  },
+  {
+    title: "Données",
+    items: [{ href: "/imports", label: "Importations", Icon: ImportIcon }],
+  },
+  {
+    title: "Rapports",
+    items: [{ href: "/rapport", label: "Rapports", Icon: ReportIcon }],
+  },
+  {
+    title: "Administration",
+    items: [{ href: "/parametres", label: "Paramètres", Icon: SettingsIcon }],
+  },
 ] as const;
 
 function Logo({ base }: { base: string }) {
@@ -44,7 +69,7 @@ function Logo({ base }: { base: string }) {
           />
         </svg>
       </span>
-      Copilote PME
+      Gescop
     </Link>
   );
 }
@@ -59,39 +84,50 @@ function NavLinks({
   counts: Record<string, number>;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      {TABS.map((tab) => {
-        const href = `${base}${tab.href}`;
-        const isActive =
-          tab.href === "" ? pathname === href : pathname === href || pathname?.startsWith(`${href}/`);
-        const count = "countKey" in tab ? counts[tab.countKey] : undefined;
-        return (
-          <Link
-            key={tab.href}
-            href={href}
-            aria-current={isActive ? "page" : undefined}
-            className={`flex items-center justify-between rounded-full px-3.5 py-2.5 text-[13.5px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nav-text focus-visible:ring-offset-2 focus-visible:ring-offset-nav ${
-              isActive
-                ? "bg-accent font-semibold text-nav-active-text"
-                : "text-nav-text-dim hover:translate-x-0.5 hover:bg-white/10 hover:text-nav-text"
-            }`}
-          >
-            <span className="flex items-center gap-2.5">
-              <tab.Icon className="h-[18px] w-[18px] shrink-0" />
-              {tab.label}
-            </span>
-            {count !== undefined && (
-              <span
-                className={`rounded-full px-2 py-0.5 font-mono text-[11px] ${
-                  isActive ? "bg-black/15 text-nav-active-text" : "bg-black/20"
+    <div className="flex flex-col gap-5">
+      {NAV_SECTIONS.map((section, sectionIndex) => (
+        <div key={section.title ?? `section-${sectionIndex}`} className="flex flex-col gap-1">
+          {section.title && (
+            <p className="mb-1 px-3.5 text-[10.5px] font-semibold uppercase tracking-wider text-nav-text-dim/70">
+              {section.title}
+            </p>
+          )}
+          {section.items.map((tab) => {
+            const href = `${base}${tab.href}`;
+            const isActive =
+              tab.href === ""
+                ? pathname === href
+                : pathname === href || pathname?.startsWith(`${href}/`);
+            const count = "countKey" in tab ? counts[tab.countKey] : undefined;
+            return (
+              <Link
+                key={tab.href}
+                href={href}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex items-center justify-between rounded-lg px-3.5 py-2.5 text-[13.5px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nav-text focus-visible:ring-offset-2 focus-visible:ring-offset-nav ${
+                  isActive
+                    ? "bg-accent font-semibold text-nav-active-text"
+                    : "text-nav-text-dim hover:translate-x-0.5 hover:bg-white/10 hover:text-nav-text"
                 }`}
               >
-                {count}
-              </span>
-            )}
-          </Link>
-        );
-      })}
+                <span className="flex items-center gap-2.5">
+                  <tab.Icon className="h-[18px] w-[18px] shrink-0" />
+                  {tab.label}
+                </span>
+                {count !== undefined && count > 0 && (
+                  <span
+                    className={`rounded-full px-2 py-0.5 font-mono text-[11px] ${
+                      isActive ? "bg-black/15 text-nav-active-text" : "bg-black/25"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

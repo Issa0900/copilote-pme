@@ -40,6 +40,23 @@ class Company(Base):
     tools_used: Mapped[str | None] = mapped_column(Text, nullable=True)
     objectives: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
 
+    # --- Seuils de pilotage, réglables par le dirigeant --------------------
+    # Le score de santé et les objectifs affichés au tableau de bord dépendent
+    # de repères qui n'ont rien d'universel : une marge de 20 % est excellente
+    # dans un commerce de détail et faible dans le logiciel. Ces valeurs sont
+    # donc paramétrables par entreprise plutôt que codées en dur, avec des
+    # valeurs par défaut explicites (cf. app/health.py).
+    target_margin_pct: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, server_default="20"
+    )
+    revenue_target: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
+    expense_budget: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
+    # Seuil de score global (0-100) à partir duquel la situation est jugée
+    # saine ; les paliers inférieurs en sont dérivés proportionnellement.
+    health_healthy_threshold: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="80"
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

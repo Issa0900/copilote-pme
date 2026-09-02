@@ -100,6 +100,59 @@ export function CompanySettingsForm({
           {pending ? "Enregistrement..." : "Enregistrer les modifications"}
         </Button>
       </Card>
+
+      {/* Seuils de pilotage : ce sont eux qui déterminent le score de santé et
+          les objectifs affichés au tableau de bord. Regroupés à part et
+          explicités, pour que le dirigeant sache exactement ce qu'il règle. */}
+      <Card className="space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold">Seuils de pilotage</h2>
+          <p className="mt-1 text-xs text-foreground-muted">
+            Ces valeurs servent de repère au score de santé et aux objectifs du
+            tableau de bord. Une marge de 18 % n&apos;a pas le même sens en
+            restauration qu&apos;en logiciel — à vous de fixer la vôtre.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Marge nette visée (%)"
+            name="target_margin_pct"
+            type="number"
+            min={1}
+            defaultValue={String(company.target_margin_pct)}
+            hint="Au-delà, la rentabilité est notée au maximum."
+          />
+          <Field
+            label="Seuil « situation saine » (score /100)"
+            name="health_healthy_threshold"
+            type="number"
+            min={10}
+            defaultValue={String(company.health_healthy_threshold)}
+            hint="Score global à partir duquel la situation est jugée saine."
+          />
+          <Field
+            label="Objectif de revenus ($)"
+            name="revenue_target"
+            type="number"
+            min={0}
+            defaultValue={company.revenue_target !== null ? String(company.revenue_target) : ""}
+            hint="Optionnel — affiché en repère sur la carte Revenus."
+          />
+          <Field
+            label="Budget de dépenses ($)"
+            name="expense_budget"
+            type="number"
+            min={0}
+            defaultValue={company.expense_budget !== null ? String(company.expense_budget) : ""}
+            hint="Optionnel — affiché en repère sur la carte Dépenses."
+          />
+        </div>
+
+        <Button type="submit" disabled={pending}>
+          {pending ? "Enregistrement..." : "Enregistrer les seuils"}
+        </Button>
+      </Card>
     </form>
   );
 }
@@ -111,6 +164,7 @@ function Field({
   required,
   min,
   defaultValue,
+  hint,
 }: {
   label: string;
   name: string;
@@ -118,6 +172,7 @@ function Field({
   required?: boolean;
   min?: number;
   defaultValue?: string;
+  hint?: string;
 }) {
   return (
     <div>
@@ -131,9 +186,16 @@ function Field({
         type={type}
         required={required}
         min={min}
+        step={type === "number" ? "any" : undefined}
         defaultValue={defaultValue}
+        aria-describedby={hint ? `${name}-hint` : undefined}
         className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
       />
+      {hint && (
+        <p id={`${name}-hint`} className="mt-1 text-[11px] text-foreground-muted">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }

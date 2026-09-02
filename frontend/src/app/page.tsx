@@ -6,7 +6,7 @@ export default function Home() {
       <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-foreground-muted">
         MVP
       </span>
-      <h1 className="text-4xl font-semibold tracking-tight">Copilote PME</h1>
+      <h1 className="text-4xl font-semibold tracking-tight">Gescop</h1>
       <p className="max-w-md text-foreground-muted">
         Connectez les données de votre entreprise et obtenez un diagnostic, des
         alertes et des recommandations.

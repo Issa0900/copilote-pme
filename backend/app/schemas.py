@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.constants import OBJECTIVE_CHOICES, REVENUE_RANGE_CHOICES
 
@@ -65,6 +65,14 @@ class CompanyUpdate(BaseModel):
     tools_used: str | None = None
     objectives: list[str] | None = None
 
+    # Seuils de pilotage réglables par le dirigeant. Bornés pour éviter les
+    # valeurs qui rendraient le score ininterprétable (marge cible nulle →
+    # division par zéro ; seuil « sain » hors de l'échelle 0-100).
+    target_margin_pct: float | None = Field(default=None, gt=0, le=100)
+    revenue_target: float | None = Field(default=None, ge=0)
+    expense_budget: float | None = Field(default=None, ge=0)
+    health_healthy_threshold: int | None = Field(default=None, ge=10, le=100)
+
 
 class CompanyRead(CompanyBase):
     model_config = ConfigDict(from_attributes=True)
@@ -72,6 +80,13 @@ class CompanyRead(CompanyBase):
     id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+
+    # Seuils de pilotage (cf. models.Company) — toujours renvoyés pour que le
+    # tableau de bord et l'écran de réglages partent des valeurs réelles.
+    target_margin_pct: float
+    revenue_target: float | None
+    expense_budget: float | None
+    health_healthy_threshold: int
 
 
 class UserRead(BaseModel):
@@ -145,10 +160,76 @@ class AnomalyRead(BaseModel):
     transaction_id: str | None
     detected_at: date | None
 
+    # « Quoi / Pourquoi / Impact / Action » : `message` porte le quoi, ces
+    # champs complètent le raisonnement affiché au tableau de bord.
+    why: str | None = None
+    impact_amount: float | None = None
+    action: str | None = None
+
 
 class DailyKpiPoint(BaseModel):
     date: date
     net: float
+    # Revenus et dépenses du jour, exposés en plus du net pour permettre au
+    # tableau de bord de tracer les trois courbes (« évolution financière »)
+    # et une mini-tendance par KPI, sans avoir à redemander la série par
+    # métrique. `expenses` est positif (montant dépensé), comme
+    # `CompanyKpis.expenses_total`.
+    revenue: float
+    expenses: float
+
+
+class KpiComparison(BaseModel):
+    """KPI de la période courante et de la période immédiatement précédente
+    de même durée, pour afficher une variation honnête (« vs période
+    précédente ») plutôt qu'une variation inventée. `previous` est None quand
+    aucune période précédente n'est demandée (vue « tout l'historique »)."""
+
+    current: "CompanyKpis"
+    previous: "CompanyKpis | None"
+
+
+class VarianceContributor(BaseModel):
+    """Une catégorie et sa contribution au mouvement d'un KPI.
+
+    `share_of_change_pct` peut dépasser 100 % ou être négatif quand des
+    catégories se compensent — voir la note dans `app/variance.py`."""
+
+    category: str
+    current: float
+    previous: float
+    delta: float
+    share_of_change_pct: float
+
+
+class KpiVariance(BaseModel):
+    metric: str  # "revenue" | "expenses"
+    current: float
+    previous: float
+    delta: float
+    delta_pct: float | None
+    contributors: list[VarianceContributor]
+
+
+class HealthDimension(BaseModel):
+    """Une dimension du score de santé. `score` est sur 100. `explanation`
+    dit en clair d'où vient la note — le score ne doit jamais être une boîte
+    noire (principe de confiance du PRD, section 44)."""
+
+    key: str
+    label: str
+    score: int
+    explanation: str
+
+
+class HealthScore(BaseModel):
+    score: int
+    label: str
+    status: str  # sain | stable | vigilance | risque | critique
+    summary: str
+    improving_count: int
+    watch_count: int
+    dimensions: list[HealthDimension]
 
 
 class CategoryBreakdownItem(BaseModel):

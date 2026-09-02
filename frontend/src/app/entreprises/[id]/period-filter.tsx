@@ -1,10 +1,13 @@
 import Link from "next/link";
 
+// « Tout » porte une valeur explicite (`tout`) plutôt que la chaîne vide : la
+// vue par défaut est désormais 30 jours, il faut donc pouvoir demander
+// l'historique complet sans que ce soit confondu avec « aucun choix ».
 const PRESETS = [
   { value: "7j", label: "7 jours" },
   { value: "30j", label: "30 jours" },
   { value: "90j", label: "90 jours" },
-  { value: "", label: "Tout" },
+  { value: "tout", label: "Tout" },
 ] as const;
 
 // Composant serveur (pas de "use client") : l'onglet actif vient directement
@@ -19,7 +22,7 @@ export function PeriodFilter({ active }: { active: string }) {
         return (
           <Link
             key={preset.value}
-            href={preset.value ? `?range=${preset.value}` : "?"}
+            href={`?range=${preset.value}`}
             aria-current={isActive ? "page" : undefined}
             className={`flex min-h-11 min-w-11 items-center whitespace-nowrap rounded-full px-3.5 py-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               isActive

@@ -1,50 +1,52 @@
 @import "tailwindcss";
 
 :root {
-  /* Marque — révision « sombre-dense » du 2026-08-21 (skill/SKILL.md) */
-  --background: #0a0f1a;
-  --surface: #121a2b;
-  --surface-muted: #1a2338; /* surface enfoncée — fonds de piste (jauges, barres) */
-  --foreground: #eaf0f7;
-  --foreground-muted: #8792a8;
+  /* Marque Gescop — révision du 2026-09-01 (skill/SKILL.md).
+     Fond plus profond et surfaces plus neutres que la direction précédente ;
+     l'accent vert reste la seule couleur de marque. */
+  --background: #0b0f14;
+  --surface: #111827;
+  --surface-muted: #1a2233; /* surface élevée — fonds de piste (jauges, barres) */
+  --foreground: #e6eaf2;
+  --foreground-muted: #94a3b8;
   --border: rgb(255 255 255 / 8%);
 
-  --accent: #1b8564; /* signal — seule couleur de marque, inchangée */
+  --accent: #1b8564; /* seule couleur de marque */
   --accent-foreground: #ffffff;
-  --accent-strong: #2aa17c; /* signal-fort — relevé pour rester lisible sur fond sombre */
+  --accent-strong: #22c55e; /* accent appuyé — hover, valeurs positives fortes */
   --accent-muted: color-mix(in srgb, var(--accent) 20%, var(--surface));
 
   /* Rail de navigation — fond toujours sombre, indépendant du thème */
-  --nav-bg: #0e1a16;
-  --nav-text: #eaf3ec;
-  --nav-text-dim: #8fb3a2;
-  --nav-active-text: #0b241a;
+  --nav-bg: #0d1420;
+  --nav-text: #e6eaf2;
+  --nav-text-dim: #94a3b8;
+  --nav-active-text: #ffffff;
 
   /* Statut sémantique — 5 teintes de base INCHANGÉES, jamais utilisées pour la
      marque ou un bouton d'action. Les variantes -muted/-border sont dérivées
      via color-mix() plutôt que codées en dur : elles restent lisibles quel
      que soit --surface/--border courants sans retuning manuel par thème. */
-  --danger: #a23b2e; /* critique */
+  --danger: #ef4444; /* critique */
   --danger-foreground: #ffffff;
   --danger-muted: color-mix(in srgb, var(--danger) 18%, var(--surface));
   --danger-border: color-mix(in srgb, var(--danger) 45%, var(--border));
 
-  --warning: #a6650a; /* important */
+  --warning: #f59e0b; /* important */
   --warning-foreground: #ffffff;
   --warning-muted: color-mix(in srgb, var(--warning) 18%, var(--surface));
   --warning-border: color-mix(in srgb, var(--warning) 45%, var(--border));
 
-  --surveillance: #8c7a2a; /* surveillance */
+  --surveillance: #eab308; /* surveillance */
   --surveillance-foreground: #ffffff;
   --surveillance-muted: color-mix(in srgb, var(--surveillance) 18%, var(--surface));
   --surveillance-border: color-mix(in srgb, var(--surveillance) 45%, var(--border));
 
-  --success: #2e7d4f; /* opportunité */
+  --success: #22c55e; /* opportunité */
   --success-foreground: #ffffff;
   --success-muted: color-mix(in srgb, var(--success) 18%, var(--surface));
   --success-border: color-mix(in srgb, var(--success) 45%, var(--border));
 
-  --info: #3d6482; /* information */
+  --info: #3b82f6; /* information */
   --info-foreground: #ffffff;
   --info-muted: color-mix(in srgb, var(--info) 18%, var(--surface));
   --info-border: color-mix(in srgb, var(--info) 45%, var(--border));

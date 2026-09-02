@@ -12,7 +12,7 @@ from app.routers import alerts, anomalies, auth, companies, dashboard, imports, 
 _docs_enabled = settings.environment != "production"
 
 app = FastAPI(
-    title="Pilote PME API",
+    title="Gescop API",
     docs_url="/docs" if _docs_enabled else None,
     redoc_url="/redoc" if _docs_enabled else None,
     openapi_url="/openapi.json" if _docs_enabled else None,

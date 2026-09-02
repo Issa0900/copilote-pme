@@ -77,6 +77,15 @@ class Anomaly:
     detected_at: date | None = None
     metadata: dict = field(default_factory=dict)
 
+    # Décomposition « Quoi / Pourquoi / Impact / Action » : `message` répond au
+    # « quoi », les trois champs ci-dessous complètent le raisonnement pour que
+    # le dirigeant puisse décider sans avoir à deviner ce que le système a
+    # regardé. `why` décrit la méthode de détection (jamais une cause métier
+    # affirmée : l'analyse causale relève du Module 6, non implémenté).
+    why: str | None = None
+    impact_amount: float | None = None
+    action: str | None = None
+
 
 def _cluster_severity(worst_z: float) -> str:
     if worst_z >= 6:
@@ -169,6 +178,20 @@ def _detect_category_outlier_clusters(transactions: list[Transaction]) -> list[A
                 category=category,
                 transaction_id=(str(flagged[0][0].id) if count == 1 else None),
                 detected_at=anchor,
+                why=(
+                    f"Montant{'s' if count > 1 else ''} très éloigné"
+                    f"{'s' if count > 1 else ''} de la médiane habituelle de la "
+                    f"catégorie ({median:.2f} $), mesuré sur l'écart médian absolu "
+                    f"des {len(baseline)} transactions antérieures."
+                ),
+                # Écart au comportement habituel, pas le montant brut : c'est
+                # le surcoût (ou surplus) réellement imputable à l'anomalie.
+                impact_amount=round(total - median * count, 2),
+                action=(
+                    f"Vérifier ces {count} transactions en catégorie « {category} »."
+                    if count > 1
+                    else f"Vérifier cette transaction en catégorie « {category} »."
+                ),
                 metadata={
                     "count": count,
                     "total": round(total, 2),
@@ -219,6 +242,16 @@ def _detect_category_trends(transactions: list[Transaction]) -> list[Anomaly]:
                         f"({earlier_total:.2f} $ → {recent_total:.2f} $)."
                     ),
                     category=category,
+                    why=(
+                        f"Comparaison des montants de cette catégorie entre la "
+                        f"période récente ({len(recent)} transactions) et la "
+                        f"période antérieure ({len(earlier)} transactions)."
+                    ),
+                    impact_amount=round(recent_total - earlier_total, 2),
+                    action=(
+                        f"Examiner les transactions récentes en catégorie "
+                        f"« {category} » pour confirmer si cette évolution est voulue."
+                    ),
                     metadata={
                         "earlier_total": round(earlier_total, 2),
                         "recent_total": round(recent_total, 2),

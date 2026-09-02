@@ -44,6 +44,9 @@ def get_company_anomalies(
             category=a.category,
             transaction_id=a.transaction_id,
             detected_at=a.detected_at,
+            why=a.why,
+            impact_amount=a.impact_amount,
+            action=a.action,
         )
         for a in anomalies
     ]

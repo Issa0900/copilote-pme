@@ -1,7 +1,11 @@
+import { Gauge } from "@/components/gauge";
 import { Badge, Card, EmptyState, LinkButton, PageHeader, SectionHeading } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Import } from "@/lib/types";
 import { UploadForm } from "./upload-form";
+
+const QUALITY_GAUGE_TONE = (score: number): "danger" | "warning" | "success" =>
+  score < 60 ? "danger" : score < 85 ? "warning" : "success";
 
 const STATUS_LABELS: Record<string, string> = {
   complete: "Complété",
@@ -68,14 +72,17 @@ export default async function CompanyImportsPage({
                   <span className="font-mono">{imp.rows_processed}</span> ligne(s) ·{" "}
                   <span className="font-mono">{imp.rows_quarantined}</span> en
                   attente de vérification
-                  {imp.quality_score !== null && (
-                    <>
-                      {" "}
-                      · score de qualité{" "}
-                      <span className="font-mono">{imp.quality_score}%</span>
-                    </>
-                  )}
                 </p>
+                {imp.quality_score !== null && (
+                  <div className="mt-2 max-w-xs">
+                    <Gauge
+                      label="Score de qualité"
+                      value={imp.quality_score}
+                      displayValue={`${imp.quality_score}%`}
+                      tone={QUALITY_GAUGE_TONE(imp.quality_score)}
+                    />
+                  </div>
+                )}
                 {imp.error_message && (
                   <p className="mt-1 text-xs text-danger">{imp.error_message}</p>
                 )}

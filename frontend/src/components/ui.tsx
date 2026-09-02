@@ -113,7 +113,7 @@ export function Card({
   return (
     <div
       style={style}
-      className={`rounded-[20px] border p-4 shadow-sm transition-transform duration-200 ease-out ${
+      className={`rounded-xl border p-4 shadow-sm transition-transform duration-200 ease-out ${
         interactive ? "hover:-translate-y-[3px] hover:scale-[1.02] hover:shadow-md" : ""
       } ${toneClass} ${railClass} ${className}`}
     >
@@ -140,7 +140,7 @@ export function Button({
   onClick?: () => void;
 }) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
   const variants: Record<string, string> = {
     primary: "bg-accent text-accent-foreground hover:bg-accent-strong",
     secondary: "border border-border bg-surface text-foreground hover:border-accent",
@@ -177,7 +177,7 @@ export function LinkButton({
   className?: string;
 }) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background";
   const variants: Record<string, string> = {
     primary: "bg-accent text-accent-foreground hover:bg-accent-strong",
     secondary: "border border-border bg-surface text-foreground hover:border-accent",
@@ -214,7 +214,7 @@ export function StatTile({
 }) {
   const valueClass = tone ? TONE_TEXT[tone] : "text-foreground";
   return (
-    <div className="rounded-[20px] border border-border bg-surface p-4 shadow-sm transition-transform duration-200 ease-out hover:-translate-y-[3px] hover:scale-[1.02] hover:shadow-md">
+    <div className="rounded-xl border border-border bg-surface p-4 shadow-sm transition-transform duration-200 ease-out hover:-translate-y-[3px] hover:scale-[1.02] hover:shadow-md">
       <p className="flex items-center gap-1.5 text-xs text-foreground-muted">
         {icon && <span className="text-foreground-muted/80">{icon}</span>}
         {label}
@@ -242,7 +242,7 @@ export function SectionHeading({
 
 export function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-[20px] border border-dashed border-border p-6 text-center text-sm text-foreground-muted">
+    <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-foreground-muted">
       {children}
     </div>
   );
