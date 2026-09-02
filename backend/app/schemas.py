@@ -367,6 +367,9 @@ class ActionRead(BaseModel):
     status: str
     priority: str
     due_date: date | None
+    # "Impact estimé" (spec §31) — copié de Recommendation.impact à la
+    # création, jamais relu en direct sur la recommandation source.
+    estimated_impact: str
 
     metric_category: str | None
     baseline_start: date

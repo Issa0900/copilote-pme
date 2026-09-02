@@ -20,7 +20,12 @@ from datetime import date
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.anomalies import DEFAULT_TARGET_MARGIN_PCT, Anomaly, detect_anomalies
+from app.anomalies import (
+    DEFAULT_TARGET_MARGIN_PCT,
+    Anomaly,
+    default_recent_period,
+    detect_anomalies,
+)
 from app.models import Company, Recommendation, Transaction
 
 SEVERITY_TO_PRIORITY = {
@@ -197,7 +202,17 @@ def sync_recommendations(company_id: uuid.UUID, db: Session) -> None:
         if company is not None and company.target_margin_pct
         else DEFAULT_TARGET_MARGIN_PCT
     )
-    anomalies = detect_anomalies(transactions, target_margin_pct=target_margin_pct)
+    # Même fenêtre par défaut que le tableau de bord (spec §64.32 : Alertes
+    # est P0, cette cohérence l'est donc aussi) — plus le découpage médian de
+    # tout l'historique, qui pouvait faire apparaître une recommandation sans
+    # équivalent visible nulle part sur le Dashboard, ou l'inverse.
+    period_start, period_end = default_recent_period()
+    anomalies = detect_anomalies(
+        transactions,
+        period_start=period_start,
+        period_end=period_end,
+        target_margin_pct=target_margin_pct,
+    )
     drafts = build_recommendation_drafts(anomalies)
 
     existing_keys = {

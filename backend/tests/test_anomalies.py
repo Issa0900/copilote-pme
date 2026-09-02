@@ -1,7 +1,7 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
-from app.anomalies import detect_anomalies
+from app.anomalies import default_recent_period, detect_anomalies
 from app.models import Transaction
 
 
@@ -390,4 +390,15 @@ def test_margin_decline_names_top_contributing_category():
     assert "Fournitures" in a.message
     assert "Fournitures" in a.action
     assert "facteur associé" in a.why  # jamais présenté comme une cause certaine
-    assert "facteur associé" in a.why  # jamais présenté comme une cause certaine
+
+
+# --- default_recent_period ---------------------------------------------------
+
+
+def test_default_recent_period_matches_dashboard_default():
+    # Même calcul que le frontend (page.tsx::computeRange("30j")) : 30 jours
+    # incluant aujourd'hui, donc start = today - 29.
+    start, end = default_recent_period()
+    assert end == date.today()
+    assert start == date.today() - timedelta(days=29)
+    assert (end - start).days == 29

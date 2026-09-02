@@ -240,6 +240,10 @@ class Action(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="a_faire")
     priority: Mapped[str] = mapped_column(String(20), nullable=False)
     due_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    # "Impact estimé" (spec §31), copié de Recommendation.impact à la
+    # création — snapshot au même titre que `title`/`priority` ci-dessus,
+    # jamais relu en direct sur la recommandation source.
+    estimated_impact: Mapped[str] = mapped_column(Text, nullable=False)
 
     metric_category: Mapped[str | None] = mapped_column(String(255), nullable=True)
     baseline_start: Mapped[date_type] = mapped_column(Date, nullable=False)

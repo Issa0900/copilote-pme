@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from app.anomalies import Anomaly
 from app.models import Recommendation
@@ -74,24 +74,31 @@ def test_get_company_recommendations_exposes_category_field(
     # Une recommandation générée à partir d'une anomalie de catégorie connue
     # (ici "Salaires") doit porter cette catégorie dans la réponse API.
     #
-    # Le détecteur d'outliers exige une baseline d'au moins MIN_BASELINE_SAMPLE
-    # (8) transactions datées avant la fenêtre récente (30 jours précédant la
-    # date la plus récente des données) ; l'outlier doit être daté dans cette
-    # fenêtre récente pour être testé contre la baseline. L'outlier reste
-    # d'amplitude modeste (-200 plutôt que -10 000) : un montant trop extrême
-    # ferait aussi basculer le total récent bien au-delà du seuil du
-    # détecteur de tendance (indépendant, basé sur un partage médian de
-    # toutes les dates de la catégorie), ce qui ajouterait une seconde
-    # recommandation "category_trend" et invaliderait l'assertion ci-dessous.
+    # `sync_recommendations` détecte désormais sur la même fenêtre par défaut
+    # que le tableau de bord (`default_recent_period`, 30 derniers jours
+    # ancrés sur aujourd'hui — spec §64.32, Alertes/Recommandations sont P0).
+    # Le détecteur d'outliers exige une baseline d'au moins
+    # MIN_BASELINE_SAMPLE (8) transactions datées AVANT cette fenêtre ;
+    # l'outlier doit être daté DANS la fenêtre pour être testé contre la
+    # baseline. L'outlier reste d'amplitude modeste (-200 plutôt que -10 000)
+    # : un montant trop extrême ferait aussi basculer le total récent bien
+    # au-delà du seuil du détecteur de tendance (indépendant), ce qui
+    # ajouterait une seconde recommandation "category_trend" et invaliderait
+    # l'assertion ci-dessous.
     client, _user, company = authed_client
     imp = make_import(company.id)
+    today = date.today()
 
-    for i in range(1, 21):
+    for i in range(20):
         make_transaction(
-            company.id, imp.id, amount=-100, category="Salaires", date=date(2024, 1, i)
+            company.id,
+            imp.id,
+            amount=-100,
+            category="Salaires",
+            date=today - timedelta(days=60 + i),
         )
     make_transaction(
-        company.id, imp.id, amount=-200, category="Salaires", date=date(2024, 6, 15)
+        company.id, imp.id, amount=-200, category="Salaires", date=today - timedelta(days=5)
     )
 
     resp = client.get(f"/companies/{company.id}/recommendations")

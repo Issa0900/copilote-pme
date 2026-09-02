@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.alerts import Alert, alerts_from_anomalies, alerts_from_imports, sort_alerts, summarize_alerts
-from app.anomalies import detect_anomalies
+from app.anomalies import default_recent_period, detect_anomalies
 from app.auth import require_company_access
 from app.database import get_db
 from app.models import Company, Import, Transaction
@@ -54,7 +54,17 @@ def _compute_company_alerts(company_id: uuid.UUID, db: Session) -> list[Alert]:
     for t in quarantined:
         quarantined_by_import.setdefault(t.import_id, []).append(t)
 
-    anomalies = detect_anomalies(transactions, target_margin_pct=float(company.target_margin_pct))
+    # Même fenêtre par défaut que le tableau de bord (spec §64.32 : Alertes
+    # est P0) — plus le découpage médian de tout l'historique, qui pouvait
+    # faire apparaître une alerte sans équivalent visible nulle part sur le
+    # Dashboard, ou l'inverse.
+    period_start, period_end = default_recent_period()
+    anomalies = detect_anomalies(
+        transactions,
+        period_start=period_start,
+        period_end=period_end,
+        target_margin_pct=float(company.target_margin_pct),
+    )
     return sort_alerts(
         alerts_from_anomalies(anomalies)
         + alerts_from_imports(imports, quarantined_by_import)

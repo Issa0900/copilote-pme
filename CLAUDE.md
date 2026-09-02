@@ -113,9 +113,9 @@ SQLAlchemy 2.0 models in `backend/app/models.py`, migrations in `backend/alembic
 
 ## Where the work stands (updated 2026-09-02)
 
-Backend suite: **213 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work (lot 5 added two more instances of the same already-accepted `_prevState`/`_formData` unused-arg warning pattern in `recommandations/actions.ts`, not a new category of issue).
+Backend suite: **215 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work (lot 5 added two more instances of the same already-accepted `_prevState`/`_formData` unused-arg warning pattern in `recommandations/actions.ts`, not a new category of issue).
 
-Lots 1-4 are merged into `main` (PR #4, PR #5). Lot 5 is uncommitted at time of writing.
+Lots 1-5 are merged into `main` (PR #4, #5, #6). The `estimated_impact` follow-up (PR #7, see Lot 5 section) and Lot 6 (below) are uncommitted at time of writing.
 
 ### Known defects, found by auditing the calculation logic against real demo data
 
@@ -136,8 +136,14 @@ mitigated but structurally open.
      is intentional and commented in place.
    - With `None`/`None` (no period selected) the historical behaviour is kept, but the trend wording no longer
      claims "la période précédente" — it now says explicitly that it splits the loaded history in half at the
-     median date. `recommendations.py`, `reports.py` and `routers/alerts.py` still call the no-period mode;
-     wiring them to a period was deliberately left out of this lot.
+     median date. **Update, same day, later lot**: `recommendations.py` and `routers/alerts.py` no longer rely
+     on this fallback — both now default to `anomalies.py::default_recent_period()` (30 days anchored on
+     `date.today()`, matching the dashboard's own default view exactly) instead of the no-period median split,
+     so Alertes/Recommandations show the same anomalies as the Dashboard's default view (spec §64.32 puts
+     Alertes at P0). `reports.py` still uses its own report-period window (a single day for a daily report,
+     far too narrow for the trend/margin detectors to fire reliably) — deliberately **not** touched by this
+     change, a separate, not-yet-made decision. The no-period fallback itself is not removed — `GET
+     /anomalies` (dashboard's own "Tout" view) still uses it.
    `GET /companies/{id}/anomalies` accepts `start_date`/`end_date` (same convention as the other dashboard
    routes) and the dashboard now passes the active period to it. `health.py` drops the **lower** date bound on
    its `anomaly_source` query (the detector needs prior history for its baseline) while keeping the upper one,
@@ -330,6 +336,43 @@ Frontend: new `/entreprises/{id}/actions` screen (`actions/` folder, same groupe
 `alertes/page.tsx`), a `Recommendations` page button "Créer une action" (redirects to the new screen rather
 than revalidating in place — the user should see where the action landed), and a nav entry with an open-actions
 count badge (`layout.tsx`/`company-nav.tsx`, same pattern as the alerts/recommendations badges already there).
+
+**Follow-up (2026-09-02, same day):** spec §31 also requires "impact estimé" as an Action field, which lot 5
+shipped without — the screen showed title/priority/due date/category but never impact. Added
+`Action.estimated_impact` (migration `899574f4c6e9`, two-step add-nullable/backfill-from-`Recommendation.impact`/
+enforce-not-null, same pattern as the existing `a1b2c3d4e5f6_backfill_recommendation_category` migration — a
+naive single-step NOT NULL add would have failed against the one action already in the demo tenant from lot
+5's own verification pass), copied at creation like `title`/`priority`, rendered on the action card.
+
+### Lot 6: Alertes/Recommandations no longer use the no-period fallback (spec §64.32)
+
+Prompted by re-checking spec §64.32's priority table before picking a next lot: **Alertes is P0 (blocking)**,
+Recommandations/Actions/Mesure avant-après are only P1. The lot 2-era gap this closes — `recommendations.py`
+and `routers/alerts.py` detecting on "all history split at the median date" instead of a real period — sits
+squarely in that P0 module, so it outranked continuing on the P1 side.
+
+New `anomalies.py::default_recent_period()` (`DEFAULT_PERIOD_DAYS = 30`): returns `(today - 29, today)`,
+deliberately **wall-clock anchored** (`date.today()`), not anchored on the most recent transaction date like
+`RECENT_WINDOW_DAYS`'s existing no-period fallback for the outlier-cluster detector. This exactly mirrors the
+frontend dashboard's own default view (`page.tsx::computeRange("30j")`) — the whole point was for
+Alertes/Recommandations to show the same anomalies as what a dirigeant sees on first landing on the Dashboard.
+The wall-clock anchor is a deliberate trade-off, confirmed with Issa before implementing: on the real demo
+tenant, some category-trend anomalies only survive under the old full-history view (e.g. "Traiteur +49%") and
+no longer surface in Alertes/Recommandations by default — accepted, because the alternative (keep drifting
+alongside stale data) is exactly the kind of unverified-currency claim the spec's confiance principle (§44)
+rules out.
+
+Both `recommendations.py::sync_recommendations` and `routers/alerts.py::_compute_company_alerts` now pass
+`period_start`/`period_end` from `default_recent_period()` into `detect_anomalies`. `health.py` and `GET
+/anomalies` were already period-aware (lot 2) and untouched. **`reports.py` deliberately left alone** — a
+report's own natural window (a single day for `quotidien`, ~7 for `hebdomadaire`, ~30 for `mensuel`) is far
+too narrow for the trend/margin detectors to fire reliably if reused as-is, and whether reports should
+instead default to the same 30-day window regardless of report type is a separate, not-yet-made product
+decision.
+
+Three existing HTTP-level tests (`test_alerts.py`/`test_recommendations.py`) dated their fixture transactions
+in fixed `2024-01`/`2024-06` — outside any wall-clock-anchored 30-day window regardless of when the suite
+runs — and were updated to date relative to `date.today()`, matching the new anchor.
 
 ### Deliberate deviations from the older docs
 
