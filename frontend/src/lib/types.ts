@@ -123,6 +123,9 @@ export type Action = {
   status: ActionStatus;
   priority: "urgente" | "élevée" | "moyenne" | "faible";
   due_date: string | null;
+  /** Copié de Recommendation.impact à la création (spec §31), jamais relu en
+   * direct sur la recommandation source. */
+  estimated_impact: string;
 
   /** Catégorie mesurée, `null` si la recommandation d'origine n'en avait pas
    * (règle "Marge") — dans ce cas c'est la marge nette qui est mesurée. */

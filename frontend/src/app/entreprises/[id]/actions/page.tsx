@@ -164,6 +164,10 @@ export default async function CompanyActionsPage({
                         status={action.status}
                       />
                     </div>
+                    <p className="mt-2 text-xs leading-snug">
+                      <span className="font-medium">Impact estimé — </span>
+                      <span className="opacity-90">{action.estimated_impact}</span>
+                    </p>
                     <MeasurementBlock
                       action={action}
                       currency={currency}

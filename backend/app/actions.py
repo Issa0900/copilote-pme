@@ -86,6 +86,7 @@ def create_action_from_recommendation(
         title=title or recommendation.action,
         priority=recommendation.priority,
         due_date=due_date,
+        estimated_impact=recommendation.impact,
         metric_category=recommendation.category,
         baseline_start=baseline_start,
         baseline_end=baseline_end,

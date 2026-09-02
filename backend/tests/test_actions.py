@@ -20,7 +20,7 @@ def _make_recommendation(db_session, company_id, **overrides):
         category=overrides.pop("category", "Fournitures"),
         situation="s",
         analysis="a",
-        impact="i",
+        impact=overrides.pop("impact", "i"),
         action=overrides.pop("action", "Vérifier la catégorie « Fournitures »."),
         priority=overrides.pop("priority", "élevée"),
         status="nouvelle",
@@ -108,6 +108,19 @@ def test_create_action_default_title_is_recommendation_action(db_session, make_c
     assert action.title == "Faire le point sur ce fournisseur."
 
 
+def test_create_action_copies_estimated_impact_from_recommendation(db_session, make_company):
+    company = make_company()
+    rec = _make_recommendation(
+        db_session,
+        company.id,
+        impact="Une hausse non expliquée peut affecter votre rentabilité.",
+    )
+
+    action = create_action_from_recommendation(company.id, rec.id, db_session)
+
+    assert action.estimated_impact == "Une hausse non expliquée peut affecter votre rentabilité."
+
+
 def test_create_action_custom_title_overrides_default(db_session, make_company):
     company = make_company()
     rec = _make_recommendation(db_session, company.id)
@@ -151,6 +164,7 @@ def test_measure_action_outcome_computes_once_window_elapsed(
         recommendation_id=rec.id,
         title="t",
         priority="élevée",
+        estimated_impact="i",
         metric_category="Fournitures",
         baseline_start=today - timedelta(days=61),
         baseline_end=today - timedelta(days=31),
@@ -197,6 +211,7 @@ def test_measure_action_outcome_is_frozen_once_measured(
         recommendation_id=rec.id,
         title="t",
         priority="élevée",
+        estimated_impact="i",
         metric_category="Fournitures",
         baseline_start=today - timedelta(days=61),
         baseline_end=today - timedelta(days=31),

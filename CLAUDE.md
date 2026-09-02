@@ -113,9 +113,9 @@ SQLAlchemy 2.0 models in `backend/app/models.py`, migrations in `backend/alembic
 
 ## Where the work stands (updated 2026-09-02)
 
-Backend suite: **213 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work (lot 5 added two more instances of the same already-accepted `_prevState`/`_formData` unused-arg warning pattern in `recommandations/actions.ts`, not a new category of issue).
+Backend suite: **214 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work (lot 5 added two more instances of the same already-accepted `_prevState`/`_formData` unused-arg warning pattern in `recommandations/actions.ts`, not a new category of issue).
 
-Lots 1-4 are merged into `main` (PR #4, PR #5). Lot 5 is uncommitted at time of writing.
+Lots 1-5 are merged into `main` (PR #4, #5, #6). The `estimated_impact` follow-up (see Lot 5 section) is uncommitted at time of writing.
 
 ### Known defects, found by auditing the calculation logic against real demo data
 
@@ -330,6 +330,13 @@ Frontend: new `/entreprises/{id}/actions` screen (`actions/` folder, same groupe
 `alertes/page.tsx`), a `Recommendations` page button "Créer une action" (redirects to the new screen rather
 than revalidating in place — the user should see where the action landed), and a nav entry with an open-actions
 count badge (`layout.tsx`/`company-nav.tsx`, same pattern as the alerts/recommendations badges already there).
+
+**Follow-up (2026-09-02, same day):** spec §31 also requires "impact estimé" as an Action field, which lot 5
+shipped without — the screen showed title/priority/due date/category but never impact. Added
+`Action.estimated_impact` (migration `899574f4c6e9`, two-step add-nullable/backfill-from-`Recommendation.impact`/
+enforce-not-null, same pattern as the existing `a1b2c3d4e5f6_backfill_recommendation_category` migration — a
+naive single-step NOT NULL add would have failed against the one action already in the demo tenant from lot
+5's own verification pass), copied at creation like `title`/`priority`, rendered on the action card.
 
 ### Deliberate deviations from the older docs
 
