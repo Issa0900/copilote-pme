@@ -85,6 +85,21 @@ export function ReportView({
                 </div>
                 <Badge tone="danger">{r.priority}</Badge>
                 <span className="ml-2 text-sm">{r.situation}</span>
+                {/* Un rapport est censé se lire seul, sans le dashboard en
+                    direct : le pourquoi/l'impact/l'action doivent être là,
+                    pas seulement le constat et la priorité. */}
+                <p className="mt-1.5 text-sm leading-snug">
+                  <span className="font-medium">Pourquoi — </span>
+                  <span className="opacity-90">{r.analysis}</span>
+                </p>
+                <p className="mt-1.5 text-sm leading-snug">
+                  <span className="font-medium">Impact — </span>
+                  <span className="opacity-90">{r.impact}</span>
+                </p>
+                <p className="mt-1.5 text-sm leading-snug">
+                  <span className="font-medium">Action — </span>
+                  <span className="opacity-90">{r.action}</span>
+                </p>
               </Card>
             ))}
           </ul>

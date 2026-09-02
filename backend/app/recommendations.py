@@ -86,16 +86,29 @@ def _impact_and_action(anomaly: Anomaly) -> tuple[str, str]:
         return impact, action
 
     if anomaly.type == "margin_decline":
-        impact = (
-            "Une marge sous l'objectif et en recul réduit directement le résultat "
-            "net dégagé sur chaque dollar de revenu, tant que la tendance n'est "
-            "pas inversée."
-        )
-        action = (
+        contributors = anomaly.metadata.get("contributors") or []
+        if contributors:
+            top = contributors[0]
+            impact = (
+                f"Une marge sous l'objectif et en recul réduit directement le "
+                f"résultat net dégagé sur chaque dollar de revenu. La catégorie "
+                f"« {top['category']} » est la plus associée à ce mouvement "
+                f"({top['delta']:+.0f} $, {abs(top['share_of_change_pct']):.0f} % "
+                "du mouvement du résultat net entre les deux périodes)."
+            )
+        else:
+            impact = (
+                "Une marge sous l'objectif et en recul réduit directement le résultat "
+                "net dégagé sur chaque dollar de revenu, tant que la tendance n'est "
+                "pas inversée."
+            )
+        # `anomaly.action` cite déjà la catégorie précise quand elle est
+        # identifiable (app/anomalies.py::_detect_margin_decline) — pas de
+        # texte générique à dupliquer ici.
+        return impact, anomaly.action or (
             "Comparer l'évolution des revenus et des dépenses par catégorie sur "
             "la période pour identifier ce qui pèse sur la marge."
         )
-        return impact, action
 
     change_pct = anomaly.metadata.get("change_pct", 0)
     if change_pct > 0:

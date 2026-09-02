@@ -102,6 +102,10 @@ def test_create_import_invalid_rows_are_quarantined_not_fatal(authed_client):
     assert statuses == {"validated", "quarantined"}
     quarantined = next(t for t in txns if t["status"] == "quarantined")
     assert "montant manquant ou illisible" in quarantined["quarantine_reasons"]
+    # Le motif nomme la catégorie du problème ; `raw_data` doit exposer la
+    # valeur brute qui a fait échouer le parsing, pour vérifier sans
+    # rouvrir le fichier source.
+    assert quarantined["raw_data"]["Montant"] == "pas un montant"
 
 
 def test_create_import_unsupported_format_is_rejected_cleanly(authed_client):

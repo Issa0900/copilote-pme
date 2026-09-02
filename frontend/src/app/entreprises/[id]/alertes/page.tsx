@@ -91,6 +91,7 @@ export default async function CompanyAlertsPage({
                         </div>
                         <p className="font-medium">{entry.alert.title}</p>
                         <p className="text-sm opacity-90">{entry.alert.message}</p>
+                        <AlertReasoning alert={entry.alert} currency={currency} />
                       </Card>
                     ) : (
                       <Card key={entry.key} tone={tone}>
@@ -132,6 +133,7 @@ export default async function CompanyAlertsPage({
                               <li key={j}>
                                 <p className="text-sm font-medium">{alert.title}</p>
                                 <p className="text-sm opacity-90">{alert.message}</p>
+                                <AlertReasoning alert={alert} currency={currency} compact />
                               </li>
                             ))}
                           </ul>
@@ -161,5 +163,52 @@ export default async function CompanyAlertsPage({
         moment.
       </p>
     </div>
+  );
+}
+
+/**
+ * Pourquoi/Impact/Action d'une alerte, quand ils existent (spec §51/§64.13).
+ * `why`/`impact_amount`/`action` restent `null` pour une alerte venant d'un
+ * import — son `message` porte déjà tout le raisonnement disponible pour
+ * cette source, rien à afficher de plus ici.
+ */
+function AlertReasoning({
+  alert,
+  currency,
+  compact = false,
+}: {
+  alert: Alert;
+  currency: string;
+  /** Vue repliée d'un groupe : texte plus petit, sans le fond de carte propre. */
+  compact?: boolean;
+}) {
+  if (!alert.why && !alert.action && (alert.impact_amount === null || alert.impact_amount === 0)) {
+    return null;
+  }
+  const textClass = compact ? "mt-1 text-xs leading-snug opacity-80" : "mt-1.5 text-sm leading-snug";
+  return (
+    <>
+      {alert.why && (
+        <p className={textClass}>
+          <span className="font-medium">Pourquoi — </span>
+          <span className="opacity-90">{alert.why}</span>
+        </p>
+      )}
+      {alert.impact_amount !== null && alert.impact_amount !== 0 && (
+        <p className={textClass}>
+          <span className="font-medium">Impact — </span>
+          <span className="font-mono opacity-90">
+            {alert.impact_amount > 0 ? "+" : ""}
+            {formatCurrency(alert.impact_amount, currency)}
+          </span>
+        </p>
+      )}
+      {alert.action && (
+        <p className={textClass}>
+          <span className="font-medium">Action — </span>
+          <span className="opacity-90">{alert.action}</span>
+        </p>
+      )}
+    </>
   );
 }

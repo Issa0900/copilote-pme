@@ -1,6 +1,7 @@
+import uuid
 from datetime import date
 
-from app.models import Report
+from app.models import Recommendation, Report
 from app.reports import (
     generate_daily_report_content,
     generate_weekly_report_content,
@@ -8,6 +9,40 @@ from app.reports import (
     period_end,
 )
 from app.routers.reports import _find_report, _get_or_create_report, _insert_report_or_get_existing
+
+
+# --- Contenu du rapport : la section "risques" ne perd plus analysis/impact -
+
+
+def test_report_risks_carry_analysis_impact_and_action(db_session, make_company):
+    # Un rapport est un instantané figé censé se lire seul (docstring du
+    # module) : la section "risques" doit porter le raisonnement complet
+    # d'une Recommendation, pas seulement le constat et la priorité.
+    company = make_company()
+    db_session.add(
+        Recommendation(
+            company_id=company.id,
+            source_type="anomaly",
+            source_key=f"report-test-{uuid.uuid4().hex[:8]}",
+            type="margin_decline",
+            situation="La marge nette est de 10.8 %.",
+            analysis="La marge nette de l'entreprise est passée sous l'objectif.",
+            impact="Une marge sous l'objectif réduit directement le résultat net.",
+            action="Examiner les transactions en catégorie « Fournitures ».",
+            priority="urgente",
+            status="nouvelle",
+        )
+    )
+    db_session.flush()
+
+    content = generate_daily_report_content(company.id, date.today(), db_session)
+
+    assert len(content["risques"]) == 1
+    risk = content["risques"][0]
+    assert risk["situation"] == "La marge nette est de 10.8 %."
+    assert risk["analysis"] == "La marge nette de l'entreprise est passée sous l'objectif."
+    assert risk["impact"] == "Une marge sous l'objectif réduit directement le résultat net."
+    assert risk["action"] == "Examiner les transactions en catégorie « Fournitures »."
 
 
 # --- is_period_closed / period_end -----------------------------------------

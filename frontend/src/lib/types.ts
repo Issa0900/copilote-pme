@@ -33,6 +33,9 @@ export type Transaction = {
   description: string | null;
   status: string;
   quarantine_reasons: string[] | null;
+  /** Valeurs brutes des colonnes du fichier source pour cette ligne, telles
+   * que lues avant normalisation — la preuve derrière `quarantine_reasons`. */
+  raw_data: Record<string, string | null> | null;
 };
 
 export type CompanyKpis = {
@@ -80,6 +83,12 @@ export type Alert = {
   source: string;
   source_id: string | null;
   category: string | null;
+  /** Quoi/Pourquoi/Impact/Action — non `null` pour une alerte venant d'une
+   * anomalie, `null` pour une alerte venant d'un import (son `message` porte
+   * déjà tout le raisonnement disponible pour cette source). */
+  why: string | null;
+  impact_amount: number | null;
+  action: string | null;
 };
 
 export type AlertSummaryItem = {
@@ -123,7 +132,13 @@ export type Report = {
       transactions_validees: number;
       panier_moyen: number | null;
     };
-    risques: { situation: string; priority: string }[];
+    risques: {
+      situation: string;
+      priority: string;
+      analysis: string;
+      impact: string;
+      action: string;
+    }[];
     opportunites: { items: string[]; note: string };
     actualites: { items: string[]; note: string };
     actions: string[];
