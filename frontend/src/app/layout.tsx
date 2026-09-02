@@ -17,7 +17,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Copilote PME",
+  title: "Gescop",
   description: "Système intelligent de pilotage pour PME",
 };
 

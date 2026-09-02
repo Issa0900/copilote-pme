@@ -1,9 +1,9 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.constants import OBJECTIVE_CHOICES, REVENUE_RANGE_CHOICES
+from app.constants import CURRENCY_CHOICES, OBJECTIVE_CHOICES, REVENUE_RANGE_CHOICES
 
 
 class CompanyBase(BaseModel):
@@ -19,6 +19,18 @@ class CompanyBase(BaseModel):
     revenue_range: str | None = None
     tools_used: str | None = None
     objectives: list[str] | None = None
+    # Code ISO 4217 (spec §64.3). Défaut CAD, cohérent avec le server_default
+    # de la colonne (app/models.py) : un défaut porté ici aussi, plutôt que de
+    # compter sur le seul défaut base de données, pour qu'il apparaisse dans
+    # le schéma OpenAPI et dans toute construction de Company côté Python.
+    currency: str = "CAD"
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, value: str) -> str:
+        if value not in CURRENCY_CHOICES:
+            raise ValueError(f"devise invalide: {value}")
+        return value
 
     @field_validator("objectives")
     @classmethod
@@ -64,6 +76,26 @@ class CompanyUpdate(BaseModel):
     revenue_range: str | None = None
     tools_used: str | None = None
     objectives: list[str] | None = None
+    # `None` = champ non transmis (cf. `exclude_unset=True` dans
+    # routers/companies.py) : la colonne n'est pas nullable en base, donc ce
+    # champ n'est jamais volontairement mis à `null` une fois l'entreprise
+    # créée, seulement omis quand il n'est pas modifié.
+    currency: str | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, value: str | None) -> str | None:
+        if value is not None and value not in CURRENCY_CHOICES:
+            raise ValueError(f"devise invalide: {value}")
+        return value
+
+    # Seuils de pilotage réglables par le dirigeant. Bornés pour éviter les
+    # valeurs qui rendraient le score ininterprétable (marge cible nulle →
+    # division par zéro ; seuil « sain » hors de l'échelle 0-100).
+    target_margin_pct: float | None = Field(default=None, gt=0, le=100)
+    revenue_target: float | None = Field(default=None, ge=0)
+    expense_budget: float | None = Field(default=None, ge=0)
+    health_healthy_threshold: int | None = Field(default=None, ge=10, le=100)
 
 
 class CompanyRead(CompanyBase):
@@ -72,6 +104,13 @@ class CompanyRead(CompanyBase):
     id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+
+    # Seuils de pilotage (cf. models.Company) — toujours renvoyés pour que le
+    # tableau de bord et l'écran de réglages partent des valeurs réelles.
+    target_margin_pct: float
+    revenue_target: float | None
+    expense_budget: float | None
+    health_healthy_threshold: int
 
 
 class UserRead(BaseModel):
@@ -126,10 +165,39 @@ class ImportRead(BaseModel):
     error_message: str | None
 
 
+class ImportCreateRead(ImportRead):
+    """Réponse de POST /companies/{id}/imports.
+
+    Ajoute deux informations de transparence exigées par la spec (§64.5 et
+    §64.19) que le modèle `Import` ne stocke pas :
+
+    - `unrecognized_columns` : colonnes du fichier qu'aucun synonyme ne
+      reconnaît, jusqu'ici écartées en silence.
+    - `duplicates_skipped` : lignes valides non insérées parce qu'une
+      transaction identique (date, montant, description) existait déjà.
+
+    ATTENTION — ces deux champs sont **calculés à la volée et non persistés** :
+    ils ne sont disponibles que dans la réponse immédiate à l'upload. Un
+    rechargement de la page (GET /imports, qui renvoie `ImportRead`) les perd.
+    Les rendre durables suppose d'ajouter des colonnes au modèle `Import`
+    (`duplicates_skipped: int`, `unrecognized_columns: JSON`) et la migration
+    Alembic correspondante — hors périmètre de ce lot."""
+
+    unrecognized_columns: list[str] = []
+    duplicates_skipped: int = 0
+
+
 class CompanyKpis(BaseModel):
     revenue_total: float
     expenses_total: float
     net_result: float
+    # Marge nette en pourcentage (net_result / revenue_total * 100), calculée
+    # côté backend — c'est ici la définition unique de la marge dans tout le
+    # produit (spec §64.7 : les KPI du MVP sont calculés côté backend).
+    # `None` — et surtout pas 0.0 — quand il n'y a aucun revenu sur la
+    # période : une marge sans revenu n'existe pas, la renvoyer à 0 %
+    # présenterait un chiffre faux comme un fait (spec §64.8).
+    net_margin_pct: float | None
     transactions_count: int
     average_sale: float | None
     quarantined_count: int
@@ -145,10 +213,76 @@ class AnomalyRead(BaseModel):
     transaction_id: str | None
     detected_at: date | None
 
+    # « Quoi / Pourquoi / Impact / Action » : `message` porte le quoi, ces
+    # champs complètent le raisonnement affiché au tableau de bord.
+    why: str | None = None
+    impact_amount: float | None = None
+    action: str | None = None
+
 
 class DailyKpiPoint(BaseModel):
     date: date
     net: float
+    # Revenus et dépenses du jour, exposés en plus du net pour permettre au
+    # tableau de bord de tracer les trois courbes (« évolution financière »)
+    # et une mini-tendance par KPI, sans avoir à redemander la série par
+    # métrique. `expenses` est positif (montant dépensé), comme
+    # `CompanyKpis.expenses_total`.
+    revenue: float
+    expenses: float
+
+
+class KpiComparison(BaseModel):
+    """KPI de la période courante et de la période immédiatement précédente
+    de même durée, pour afficher une variation honnête (« vs période
+    précédente ») plutôt qu'une variation inventée. `previous` est None quand
+    aucune période précédente n'est demandée (vue « tout l'historique »)."""
+
+    current: "CompanyKpis"
+    previous: "CompanyKpis | None"
+
+
+class VarianceContributor(BaseModel):
+    """Une catégorie et sa contribution au mouvement d'un KPI.
+
+    `share_of_change_pct` peut dépasser 100 % ou être négatif quand des
+    catégories se compensent — voir la note dans `app/variance.py`."""
+
+    category: str
+    current: float
+    previous: float
+    delta: float
+    share_of_change_pct: float
+
+
+class KpiVariance(BaseModel):
+    metric: str  # "revenue" | "expenses"
+    current: float
+    previous: float
+    delta: float
+    delta_pct: float | None
+    contributors: list[VarianceContributor]
+
+
+class HealthDimension(BaseModel):
+    """Une dimension du score de santé. `score` est sur 100. `explanation`
+    dit en clair d'où vient la note — le score ne doit jamais être une boîte
+    noire (principe de confiance du PRD, section 44)."""
+
+    key: str
+    label: str
+    score: int
+    explanation: str
+
+
+class HealthScore(BaseModel):
+    score: int
+    label: str
+    status: str  # sain | stable | vigilance | risque | critique
+    summary: str
+    improving_count: int
+    watch_count: int
+    dimensions: list[HealthDimension]
 
 
 class CategoryBreakdownItem(BaseModel):

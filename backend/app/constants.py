@@ -29,3 +29,11 @@ REVENUE_RANGE_CHOICES = [
     "1m-5m",
     "5m+",
 ]
+
+# Devise de l'entreprise (spec §64.3). Liste fermée plutôt qu'un code ISO 4217
+# libre : la conversion multi-devise est explicitement hors scope du MVP
+# (docs/project-charter.md, "Gestion multi-devise avancée... reportée en Phase
+# 3") — un code accepté sans conversion associée serait trompeur. CAD/USD/EUR
+# couvrent le marché cible (PME au Québec/Canada, souvent avec des clients ou
+# fournisseurs américains) sans ouvrir sur une promesse de conversion non tenue.
+CURRENCY_CHOICES = ["CAD", "USD", "EUR"]

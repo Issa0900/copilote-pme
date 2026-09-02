@@ -53,6 +53,10 @@ export async function createCompanyAction(
     revenue_range: formData.get("revenue_range") || null,
     tools_used: formData.get("tools_used") || null,
     objectives: formData.getAll("objectives"),
+    // "CAD" si le sélecteur n'a pas pu être rempli (échec de
+    // /meta/company-options) : jamais une chaîne vide, que le backend
+    // rejetterait puisque `currency` n'accepte pas `null`/"".
+    currency: formData.get("currency") || "CAD",
     email,
     password,
   };

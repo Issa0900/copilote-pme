@@ -335,6 +335,88 @@ def test_create_import_malformed_xml_marks_import_as_failed(authed_client):
     assert "corrompu" in body["error_message"]
 
 
+class TestImportTransparency:
+    """Spec §64.5 (« les colonnes inconnues sont signalées ») et §64.19 (« les
+    doublons sont détectés », « les problèmes sont détaillés ») : ces deux
+    informations étaient calculées ou perdues en silence."""
+
+    def test_unrecognized_columns_are_reported(self, authed_client):
+        client, _, company = authed_client
+        csv_content = (
+            "Date,Montant,Categorie,Numero de facture,Vendeur\n"
+            "01/06/2024,150.00,Ventes,F-001,Alice\n"
+        )
+
+        resp = client.post(
+            f"/companies/{company.id}/imports", files=_csv_upload(csv_content)
+        )
+
+        assert resp.status_code == 201
+        body = resp.json()
+        # Ordre du fichier conservé, colonnes reconnues absentes.
+        assert body["unrecognized_columns"] == ["Numero de facture", "Vendeur"]
+
+    def test_fully_recognized_file_reports_no_unrecognized_column(self, authed_client):
+        client, _, company = authed_client
+        csv_content = (
+            "Date,Montant,Categorie,Description\n"
+            "01/06/2024,150.00,Ventes,Client A\n"
+        )
+
+        resp = client.post(
+            f"/companies/{company.id}/imports", files=_csv_upload(csv_content)
+        )
+
+        assert resp.status_code == 201
+        assert resp.json()["unrecognized_columns"] == []
+
+    def test_duplicates_skipped_is_reported(self, authed_client):
+        """Le second import contient une ligne déjà connue et une nouvelle :
+        la réponse doit annoncer exactement 1 doublon écarté."""
+        client, _, company = authed_client
+        first_csv = (
+            "Date,Montant,Categorie,Description\n"
+            "01/06/2024,150.00,Ventes,Client A\n"
+        )
+        first = client.post(
+            f"/companies/{company.id}/imports", files=_csv_upload(first_csv)
+        )
+        assert first.status_code == 201
+        assert first.json()["duplicates_skipped"] == 0
+
+        second_csv = (
+            "Date,Montant,Categorie,Description\n"
+            "01/06/2024,150.00,Ventes,Client A\n"
+            "03/06/2024,200.00,Ventes,Client C\n"
+        )
+        second = client.post(
+            f"/companies/{company.id}/imports",
+            files=_csv_upload(second_csv, filename="releve2.csv"),
+        )
+
+        assert second.status_code == 201
+        body = second.json()
+        assert body["rows_processed"] == 2
+        assert body["duplicates_skipped"] == 1
+
+    def test_duplicates_within_the_same_file_are_reported(self, authed_client):
+        """Deux lignes identiques dans un même fichier : la seconde est un
+        doublon (elle est ajoutée à `existing_keys` au fil de la boucle)."""
+        client, _, company = authed_client
+        csv_content = (
+            "Date,Montant,Categorie,Description\n"
+            "01/06/2024,150.00,Ventes,Client A\n"
+            "01/06/2024,150.00,Ventes,Client A\n"
+        )
+
+        resp = client.post(
+            f"/companies/{company.id}/imports", files=_csv_upload(csv_content)
+        )
+
+        assert resp.status_code == 201
+        assert resp.json()["duplicates_skipped"] == 1
+
+
 def test_create_import_empty_file_marks_import_as_failed(authed_client):
     """Un fichier sans aucune ligne de donnée doit marquer l'import comme
     échoué proprement plutôt que de planter."""

@@ -1,5 +1,7 @@
+import { ListPagination } from "@/components/list-pagination";
 import { Badge, Card, EmptyState, PageHeader, TrustBadge, type Tone } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
+import { PAGE_SIZES, parseOffset, readPageInfo } from "@/lib/pagination";
 import { groupRecommendations } from "@/lib/recommendation-groups";
 import type { Recommendation } from "@/lib/types";
 import { RecommendationActions } from "./recommendation-actions";
@@ -58,13 +60,29 @@ function RecommendationBody({
 
 export default async function CompanyRecommendationsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ offset?: string }>;
 }) {
   const { id } = await params;
+  const { offset: rawOffset } = await searchParams;
 
-  const res = await apiFetch(`/companies/${id}/recommendations`);
+  // Liste bornée par le backend (spec §64.24) : page explicite + lecture de
+  // `X-Total-Count`, pour ne pas laisser croire que tout ce qu'il y a à faire
+  // tient dans ce qui est affiché.
+  const limit = PAGE_SIZES.recommendations;
+  const offset = parseOffset(rawOffset);
+
+  const res = await apiFetch(
+    `/companies/${id}/recommendations?limit=${limit}&offset=${offset}`
+  );
+  // Un échec de chargement ne doit jamais se confondre avec « aucune
+  // recommandation » : ce serait affirmer qu'il n'y a rien à faire alors qu'on
+  // n'a rien pu vérifier (spec §64.22).
+  const recsFailed = !res.ok;
   const recommendations: Recommendation[] = res.ok ? await res.json() : [];
+  const page = readPageInfo(res, recommendations.length, offset, limit);
 
   const entries = groupRecommendations(recommendations);
 
@@ -74,9 +92,25 @@ export default async function CompanyRecommendationsPage({
         title="Recommandations"
         subtitle="Les signaux les plus sérieux des alertes, transformés en fiches d'action : situation, analyse, impact, et quoi faire."
       />
-      {recommendations.length === 0 ? (
+      {recsFailed ? (
+        <Card tone="danger">
+          <p className="text-sm font-medium">
+            Impossible de charger les recommandations.
+          </p>
+          <p className="mt-1 text-sm opacity-90">
+            Le serveur n&apos;a pas répondu : cet écran ne dit pas qu&apos;il
+            n&apos;y a rien à faire, il n&apos;a pas pu le vérifier.{" "}
+            <a href={`/entreprises/${id}/recommandations`} className="underline">
+              Recharger la page
+            </a>
+            . Si l&apos;erreur persiste, vérifiez votre connexion réseau, puis
+            signalez-la à votre administrateur en précisant l&apos;heure.
+          </p>
+        </Card>
+      ) : recommendations.length === 0 ? (
         <EmptyState>Aucune recommandation pour l&apos;instant.</EmptyState>
       ) : (
+        <>
         <ul
           className="animate-enter space-y-3"
           style={{ "--enter-delay": "0s" } as React.CSSProperties}
@@ -150,6 +184,13 @@ export default async function CompanyRecommendationsPage({
             )
           )}
         </ul>
+        <ListPagination
+          page={page}
+          basePath={`/entreprises/${id}/recommandations`}
+          label="recommandations"
+          note="Le regroupement par catégorie ne porte que sur les recommandations de cette page — d'autres vous attendent sur la suivante."
+        />
+        </>
       )}
 
       <p className="mt-8 text-xs text-foreground-muted">

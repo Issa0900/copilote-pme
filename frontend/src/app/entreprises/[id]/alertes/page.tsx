@@ -1,19 +1,42 @@
+import { ListPagination } from "@/components/list-pagination";
 import { Badge, Card, EmptyState, PageHeader, SectionHeading, TrustBadge } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { amountRange, groupAlerts } from "@/lib/alert-groups";
 import { ALERT_LEVEL_LABELS, ALERT_LEVEL_ORDER, ALERT_LEVEL_TONE } from "@/lib/alert-levels";
 import { formatCurrency } from "@/lib/format";
-import type { Alert } from "@/lib/types";
+import { PAGE_SIZES, parseOffset, readPageInfo } from "@/lib/pagination";
+import type { Alert, Company } from "@/lib/types";
 
 export default async function CompanyAlertsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ offset?: string }>;
 }) {
   const { id } = await params;
+  const { offset: rawOffset } = await searchParams;
 
-  const res = await apiFetch(`/companies/${id}/alerts`);
+  // Liste bornée par le backend (spec §64.24). Les alertes arrivent triées de
+  // la plus grave à la moins grave : une page ne masque donc jamais un signal
+  // plus urgent que ceux affichés, mais elle reste une page — le total est lu
+  // dans `X-Total-Count` et annoncé à l'écran.
+  const limit = PAGE_SIZES.alerts;
+  const offset = parseOffset(rawOffset);
+
+  const [res, companyRes] = await Promise.all([
+    apiFetch(`/companies/${id}/alerts?limit=${limit}&offset=${offset}`),
+    apiFetch(`/companies/${id}`),
+  ]);
+  // Un échec de chargement ne doit jamais se confondre avec « aucune alerte » :
+  // le produit affirmerait qu'il n'y a rien à signaler alors qu'il n'a rien pu
+  // vérifier (spec §64.22). L'échec est donc capturé à part et rendu dans une
+  // branche explicite, avant la branche « liste vide ».
+  const alertsFailed = !res.ok;
   const alerts: Alert[] = res.ok ? await res.json() : [];
+  const page = readPageInfo(res, alerts.length, offset, limit);
+  const company: Company | null = companyRes.ok ? await companyRes.json() : null;
+  const currency = company?.currency ?? "CAD";
 
   const grouped = ALERT_LEVEL_ORDER.map((level) => ({
     level,
@@ -26,7 +49,20 @@ export default async function CompanyAlertsPage({
         title="Alertes"
         subtitle="Tous les signaux détectés, du plus urgent au moins urgent — une vue d'ensemble à consulter, pas encore une liste de tâches."
       />
-      {alerts.length === 0 ? (
+      {alertsFailed ? (
+        <Card tone="danger">
+          <p className="text-sm font-medium">Impossible de charger les alertes.</p>
+          <p className="mt-1 text-sm opacity-90">
+            Le serveur n&apos;a pas répondu : cet écran ne dit pas qu&apos;il
+            n&apos;y a aucune alerte, il n&apos;a pas pu le vérifier.{" "}
+            <a href={`/entreprises/${id}/alertes`} className="underline">
+              Recharger la page
+            </a>
+            . Si l&apos;erreur persiste, vérifiez votre connexion réseau, puis
+            signalez-la à votre administrateur en précisant l&apos;heure.
+          </p>
+        </Card>
+      ) : alerts.length === 0 ? (
         <EmptyState>Aucune alerte pour l&apos;instant.</EmptyState>
       ) : (
         <div className="space-y-6">
@@ -39,8 +75,12 @@ export default async function CompanyAlertsPage({
                 className="animate-enter"
                 style={{ "--enter-delay": `${groupIndex * 0.05}s` } as React.CSSProperties}
               >
+                {/* Sur une liste tronquée, ce compteur ne décrit que la page
+                    affichée : le dire, plutôt que de laisser lire « 50 »
+                    comme le total du niveau. */}
                 <SectionHeading>
-                  {ALERT_LEVEL_LABELS[level]} ({items.length})
+                  {ALERT_LEVEL_LABELS[level]} ({items.length}
+                  {page.truncated ? " sur cette page" : ""})
                 </SectionHeading>
                 <ul className="space-y-2">
                   {entries.map((entry, i) =>
@@ -65,7 +105,7 @@ export default async function CompanyAlertsPage({
                                 {(() => {
                                   const range = amountRange(entry.alerts);
                                   return range
-                                    ? `Montants observés : de ${formatCurrency(range.min)} à ${formatCurrency(range.max)}`
+                                    ? `Montants observés : de ${formatCurrency(range.min, currency)} à ${formatCurrency(range.max, currency)}`
                                     : entry.alerts[0].message;
                                 })()}
                               </p>
@@ -103,6 +143,12 @@ export default async function CompanyAlertsPage({
               </div>
             );
           })}
+          <ListPagination
+            page={page}
+            basePath={`/entreprises/${id}/alertes`}
+            label="alertes"
+            note="Les alertes sont classées de la plus grave à la moins grave : les suivantes sont moins urgentes, mais elles existent."
+          />
         </div>
       )}
 

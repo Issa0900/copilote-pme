@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24  # 24h
 
+    # Niveau du logging applicatif (dont le journal d'audit des actions
+    # sensibles, cf. app/audit.py). INFO par défaut : les entrées d'audit sont
+    # émises en INFO et doivent apparaître sans configuration particulière.
+    log_level: str = "INFO"
+
     # Liste d'origines autorisées séparées par des virgules (ex. domaine
     # Vercel en production) — défaut au dev local pour ne rien casser.
     cors_allowed_origins: str = "http://localhost:3000"

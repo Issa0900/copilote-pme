@@ -3,7 +3,7 @@ name: orchestrateur-ingenierie
 description: Orchestrateur d'ingénierie pour le Copilote PME (Next.js/TypeScript + FastAPI/Python + PostgreSQL). Reçoit toute demande technique — backend, frontend, base de données/migrations, DevOps/Docker, tests/QA, sécurité, architecture, revue de code, dette technique, performance, observabilité — et la route vers le skill ingénieur spécialisé le plus adapté (bundle engineering-skills / engineering-advanced-skills), en lui transmettant le contexte du projet (stack, arborescence, conventions) pour qu'il n'ait pas à le redécouvrir. Utilise ce skill dès qu'Issa demande d'implémenter, corriger, revoir, sécuriser, tester, déployer ou faire évoluer une partie du code de ce projet — plutôt que d'appeler un skill ingénieur au hasard ou de travailler à l'aveugle sans consulter le bon spécialiste.
 ---
 
-# Orchestrateur d'ingénierie — Copilote PME
+# Orchestrateur d'ingénierie — Gescop
 
 ## Rôle
 

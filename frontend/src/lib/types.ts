@@ -6,6 +6,7 @@ export type CompanyOption = {
 export type CompanyOptions = {
   objectives: CompanyOption[];
   revenue_ranges: string[];
+  currencies: string[];
 };
 
 export type Import = {
@@ -38,6 +39,11 @@ export type CompanyKpis = {
   revenue_total: number;
   expenses_total: number;
   net_result: number;
+  /** Marge nette en pourcentage, calculée et arrondie (1 décimale) par le
+   * backend — à afficher telle quelle, jamais recalculée côté frontend
+   * (spec §64.29). `null` quand il n'y a aucun revenu sur la période : une
+   * marge n'a alors pas de sens, et surtout pas la valeur 0. */
+  net_margin_pct: number | null;
   transactions_count: number;
   average_sale: number | null;
   quarantined_count: number;
@@ -52,6 +58,12 @@ export type Anomaly = {
   category: string | null;
   transaction_id: string | null;
   detected_at: string | null;
+
+  /** « Quoi / Pourquoi / Impact / Action » — `message` porte le quoi. */
+  why: string | null;
+  /** Écart chiffré imputable à l'anomalie (positif = surcoût/hausse). */
+  impact_amount: number | null;
+  action: string | null;
 };
 
 export type AlertLevel =
@@ -123,6 +135,53 @@ export type Report = {
 export type DailyKpiPoint = {
   date: string;
   net: number;
+  revenue: number;
+  /** Positif : montant dépensé sur la journée (même convention que `expenses_total`). */
+  expenses: number;
+};
+
+export type KpiComparison = {
+  current: CompanyKpis;
+  /** null en vue « tout l'historique » : aucune période précédente comparable. */
+  previous: CompanyKpis | null;
+};
+
+export type VarianceContributor = {
+  category: string;
+  current: number;
+  previous: number;
+  delta: number;
+  /** Part du mouvement total. Peut dépasser 100 % ou être négative quand des
+   * catégories se compensent — c'est l'information utile, pas une erreur. */
+  share_of_change_pct: number;
+};
+
+export type KpiVariance = {
+  metric: "revenue" | "expenses";
+  current: number;
+  previous: number;
+  delta: number;
+  delta_pct: number | null;
+  contributors: VarianceContributor[];
+};
+
+export type HealthDimension = {
+  key: string;
+  label: string;
+  score: number;
+  explanation: string;
+};
+
+export type HealthStatus = "excellent" | "sain" | "stable" | "vigilance" | "risque" | "critique";
+
+export type HealthScore = {
+  score: number;
+  label: string;
+  status: HealthStatus;
+  summary: string;
+  improving_count: number;
+  watch_count: number;
+  dimensions: HealthDimension[];
 };
 
 export type CategoryBreakdownItem = {
@@ -144,6 +203,15 @@ export type Company = {
   revenue_range: string | null;
   tools_used: string | null;
   objectives: string[] | null;
+  /** Code ISO 4217 (spec §64.3) — à passer à `formatCurrency`, jamais à
+   * recalculer ou deviner côté écran. */
+  currency: string;
   created_at: string;
   updated_at: string;
+
+  /** Seuils de pilotage réglables dans l'écran Paramètres. */
+  target_margin_pct: number;
+  revenue_target: number | null;
+  expense_budget: number | null;
+  health_healthy_threshold: number;
 };

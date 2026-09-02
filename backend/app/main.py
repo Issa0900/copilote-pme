@@ -3,16 +3,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
+from app.audit import configure_logging
 from app.config import settings
 from app.rate_limit import limiter
 from app.routers import alerts, anomalies, auth, companies, dashboard, imports, meta, recommendations, reports
+
+# Spec §64.25 : journalisation des actions sensibles. La configuration du
+# logging est faite ici, au point d'entrée unique de l'application, pour que
+# les entrées d'audit soient émises quel que soit le mode de lancement
+# (uvicorn, TestClient, scripts important `app.main`).
+configure_logging(settings.log_level)
 
 # VULN-004 : /docs, /redoc et /openapi.json ne doivent pas être exposés en
 # production — désactivés (None) dès que settings.environment == "production".
 _docs_enabled = settings.environment != "production"
 
 app = FastAPI(
-    title="Pilote PME API",
+    title="Gescop API",
     docs_url="/docs" if _docs_enabled else None,
     redoc_url="/redoc" if _docs_enabled else None,
     openapi_url="/openapi.json" if _docs_enabled else None,

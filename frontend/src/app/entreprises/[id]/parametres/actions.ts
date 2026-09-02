@@ -26,11 +26,33 @@ export async function updateCompanyAction(
     };
   }
 
+  // Champs numériques optionnels : un champ laissé vide doit rester `null`
+  // (« pas d'objectif fixé »), surtout pas 0 — un objectif de 0 $ afficherait
+  // un « 100 % atteint » trompeur au tableau de bord.
+  const optionalNumber = (key: string): number | null => {
+    const raw = formData.get(key);
+    if (raw === null || String(raw).trim() === "") return null;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+  };
+
+  // `target_margin_pct` et `health_healthy_threshold` ne sont pas nullables en
+  // base (ils ont toujours une valeur par défaut) : on ne les transmet que
+  // renseignés, sinon le PATCH tenterait de les effacer. À l'inverse,
+  // `revenue_target`/`expense_budget` sont bien optionnels — y envoyer `null`
+  // est la façon d'effacer un objectif.
+  const targetMargin = optionalNumber("target_margin_pct");
+  const healthyThreshold = optionalNumber("health_healthy_threshold");
+
   const payload = {
     name,
     sector,
     location,
     employees,
+    ...(targetMargin !== null ? { target_margin_pct: targetMargin } : {}),
+    ...(healthyThreshold !== null ? { health_healthy_threshold: healthyThreshold } : {}),
+    revenue_target: optionalNumber("revenue_target"),
+    expense_budget: optionalNumber("expense_budget"),
     business_model: formData.get("business_model") || null,
     products: formData.get("products") || null,
     services: formData.get("services") || null,
@@ -39,6 +61,10 @@ export async function updateCompanyAction(
     revenue_range: formData.get("revenue_range") || null,
     tools_used: formData.get("tools_used") || null,
     objectives: formData.getAll("objectives"),
+    // Jamais `null` : la colonne n'est pas nullable en base (contrairement à
+    // revenue_range) — sans valeur du sélecteur, on omet le champ plutôt que
+    // d'envoyer une devise vide que le backend rejetterait.
+    ...(formData.get("currency") ? { currency: formData.get("currency") } : {}),
   };
 
   const res = await apiFetch(`/companies/${companyId}`, {

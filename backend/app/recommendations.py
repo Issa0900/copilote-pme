@@ -20,8 +20,8 @@ from datetime import date
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.anomalies import Anomaly, detect_anomalies
-from app.models import Recommendation, Transaction
+from app.anomalies import DEFAULT_TARGET_MARGIN_PCT, Anomaly, detect_anomalies
+from app.models import Company, Recommendation, Transaction
 
 SEVERITY_TO_PRIORITY = {
     "high": "urgente",
@@ -38,6 +38,11 @@ ANALYSIS_TEXT = {
     "category_trend": (
         "Le total de cette catégorie a nettement changé entre la période récente "
         "et la période précédente, en comparant vos transactions validées."
+    ),
+    "margin_decline": (
+        "La marge nette de l'entreprise est passée sous l'objectif fixé et a "
+        "reculé nettement par rapport à la période de comparaison, en comparant "
+        "vos transactions validées."
     ),
 }
 
@@ -77,6 +82,18 @@ def _impact_and_action(anomaly: Anomaly) -> tuple[str, str]:
         action = (
             "Vérifier la ou les transactions concernées (pièce justificative, "
             "montant, catégorie) et les corriger si nécessaire."
+        )
+        return impact, action
+
+    if anomaly.type == "margin_decline":
+        impact = (
+            "Une marge sous l'objectif et en recul réduit directement le résultat "
+            "net dégagé sur chaque dollar de revenu, tant que la tendance n'est "
+            "pas inversée."
+        )
+        action = (
+            "Comparer l'évolution des revenus et des dépenses par catégorie sur "
+            "la période pour identifier ce qui pèse sur la marge."
         )
         return impact, action
 
@@ -161,7 +178,13 @@ def sync_recommendations(company_id: uuid.UUID, db: Session) -> None:
         .filter(Transaction.company_id == company_id, Transaction.status == "validated")
         .all()
     )
-    anomalies = detect_anomalies(transactions)
+    company = db.get(Company, company_id)
+    target_margin_pct = (
+        float(company.target_margin_pct)
+        if company is not None and company.target_margin_pct
+        else DEFAULT_TARGET_MARGIN_PCT
+    )
+    anomalies = detect_anomalies(transactions, target_margin_pct=target_margin_pct)
     drafts = build_recommendation_drafts(anomalies)
 
     existing_keys = {

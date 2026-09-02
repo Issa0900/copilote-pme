@@ -1,6 +1,11 @@
 from fastapi import APIRouter
 
-from app.constants import OBJECTIVE_CHOICES, OBJECTIVE_LABELS, REVENUE_RANGE_CHOICES
+from app.constants import (
+    CURRENCY_CHOICES,
+    OBJECTIVE_CHOICES,
+    OBJECTIVE_LABELS,
+    REVENUE_RANGE_CHOICES,
+)
 
 router = APIRouter(prefix="/meta", tags=["meta"])
 
@@ -13,4 +18,5 @@ def get_company_options():
             for value in OBJECTIVE_CHOICES
         ],
         "revenue_ranges": REVENUE_RANGE_CHOICES,
+        "currencies": CURRENCY_CHOICES,
     }

@@ -379,6 +379,26 @@ def _map_columns(columns: list[str], profile: str = "generique") -> dict[str, st
     return mapping
 
 
+def find_unrecognized_columns(columns: list, profile: str = "generique") -> list[str]:
+    """Colonnes du fichier qu'aucun ensemble de synonymes ne reconnait (spec
+    §64.5 : « les colonnes inconnues sont signalees »).
+
+    `_map_columns` ne retient qu'une colonne par champ connu : tout le reste
+    etait jusqu'ici ecarte en silence, y compris une colonne entiere de donnees
+    metier. Cette fonction rend cette perte visible pour que l'API puisse la
+    remonter a l'utilisateur.
+
+    Les colonnes sans en-tete exploitable (`Unnamed: 3` genere par pandas sur
+    une colonne vide d'un export Excel) sont signalees comme les autres : c'est
+    justement le cas ou le dirigeant a besoin de savoir que son fichier
+    contient une colonne que le systeme ne sait pas nommer."""
+    mapping = _map_columns([str(col) for col in columns], profile=profile)
+    recognized = {value for value in mapping.values() if value is not None}
+    # Ordre du fichier conserve : plus facile a rapprocher de l'en-tete
+    # original que n'importe quel tri alphabetique.
+    return [str(col) for col in columns if str(col) not in recognized]
+
+
 def _parse_amount(raw) -> float | None:
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return None

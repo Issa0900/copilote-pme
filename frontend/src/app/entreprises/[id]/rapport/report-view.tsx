@@ -5,9 +5,12 @@ import type { Report } from "@/lib/types";
 export function ReportView({
   report,
   cadenceNote,
+  currency = "CAD",
 }: {
   report: Report;
   cadenceNote: string;
+  /** Devise de l'entreprise (`Company.currency`). */
+  currency?: string;
 }) {
   return (
     <div className="space-y-8">
@@ -43,15 +46,15 @@ export function ReportView({
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StatTile
             label="Revenus"
-            value={formatCurrency(report.content.performance.revenus)}
+            value={formatCurrency(report.content.performance.revenus, currency)}
           />
           <StatTile
             label="Dépenses"
-            value={formatCurrency(report.content.performance.depenses)}
+            value={formatCurrency(report.content.performance.depenses, currency)}
           />
           <StatTile
             label="Résultat net"
-            value={formatCurrency(report.content.performance.resultat_net)}
+            value={formatCurrency(report.content.performance.resultat_net, currency)}
             tone={report.content.performance.resultat_net >= 0 ? "success" : "danger"}
           />
           <StatTile
@@ -62,7 +65,7 @@ export function ReportView({
             label="Panier moyen"
             value={
               report.content.performance.panier_moyen !== null
-                ? formatCurrency(report.content.performance.panier_moyen)
+                ? formatCurrency(report.content.performance.panier_moyen, currency)
                 : "—"
             }
           />
