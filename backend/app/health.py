@@ -129,7 +129,9 @@ def compute_health_score(
         if end_date is not None:
             query = query.filter(Transaction.date <= end_date)
         anomaly_source = query.all()
-    anomalies = detect_anomalies(anomaly_source, period_start=start_date, period_end=end_date)
+    anomalies = detect_anomalies(
+        anomaly_source, period_start=start_date, period_end=end_date, target_margin_pct=target_margin
+    )
 
     dimensions: list[HealthDimension] = []
 

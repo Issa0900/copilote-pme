@@ -1,10 +1,18 @@
 """Détection d'anomalies statistique (PRD Module 7, section 13).
 
 Comparaisons implémentées : groupes de transactions inhabituelles récentes
-par catégorie (baseline robuste médiane/MAD) et écart entre période récente
-et période antérieure par catégorie (tendance). Ce sont des interprétations
-statistiques du système (étiquette ANALYSE, PRD section 44), pas des faits
-bruts.
+par catégorie (baseline robuste médiane/MAD), écart entre période récente
+et période antérieure par catégorie (tendance), et marge nette sous
+l'objectif en baisse marquée (règle déterministe globale, pas par
+catégorie). Ce sont des interprétations statistiques du système (étiquette
+ANALYSE, PRD section 44), pas des faits bruts.
+
+Les trois règles ci-dessus correspondent exactement aux trois exigées par
+la spec (§64.12 : « Le MVP doit contenir au minimum 3 règles déterministes »
+— Marge, Dépenses, Ventes) : `_detect_margin_decline` couvre Marge,
+`_detect_category_trends` couvre Dépenses/Ventes par catégorie (un même
+mécanisme symétrique, une hausse en catégorie de dépense ou une baisse en
+catégorie de revenu déclenchent l'une ou l'autre).
 
 Le détecteur d'anomalies transactionnelles regroupe volontairement les
 transactions signalées par catégorie plutôt que d'émettre une anomalie par
@@ -41,6 +49,17 @@ MAX_ANOMALIES = 20
 
 MIN_PER_PERIOD_FOR_TREND = 2
 TREND_CHANGE_THRESHOLD = 0.3  # 30 %
+
+# Règle "Marge" (spec §12/§18, exemple littéral :
+# `if margin < target_margin and margin_change <= -3: create_alert(...)`).
+# Seuil de baisse repris tel quel de l'exemple de la spec.
+MARGIN_DECLINE_THRESHOLD_POINTS = 3.0
+
+# Marge cible par défaut quand l'entreprise n'en a pas défini une. Duplique
+# `health.DEFAULT_TARGET_MARGIN` (même valeur, même origine PRD) plutôt que
+# de l'importer : `health.py` importe déjà `detect_anomalies` d'ici, un
+# import dans l'autre sens créerait un cycle.
+DEFAULT_TARGET_MARGIN_PCT = 20.0
 
 MONTHS_FR = [
     "janvier",
@@ -347,21 +366,144 @@ def _detect_category_trends(
     return anomalies
 
 
+def _net_margin_pct(transactions: list[Transaction]) -> float | None:
+    """Marge nette (%) sur un ensemble de transactions déjà chargé — même
+    formule que `kpis.py::compute_company_kpis` (net_margin_pct), mais
+    recalculée en Python : ce détecteur ne dispose pas d'une session DB pour
+    ré-agréger via SQL. `None` sans revenu, jamais 0 % (spec §64.8)."""
+    revenue = sum(float(t.amount) for t in transactions if t.amount and t.amount > 0)
+    if revenue <= 0:
+        return None
+    expenses = sum(-float(t.amount) for t in transactions if t.amount and t.amount < 0)
+    return (revenue - expenses) / revenue * 100
+
+
+def _margin_severity(gap_to_target: float, change: float) -> str:
+    if gap_to_target >= 10 or change <= -8:
+        return "high"
+    if gap_to_target >= 5 or change <= -5:
+        return "medium"
+    return "low"
+
+
+def _detect_margin_decline(
+    transactions: list[Transaction],
+    *,
+    period_start: date | None = None,
+    period_end: date | None = None,
+    target_margin_pct: float,
+) -> list[Anomaly]:
+    """Règle déterministe "Marge" (spec §12/§18, une des 3 minimales exigées
+    par §64.12) : marge nette sous l'objectif ET en baisse d'au moins
+    `MARGIN_DECLINE_THRESHOLD_POINTS` points par rapport à la période de
+    comparaison.
+
+    Contrairement aux deux autres règles (par transaction / par catégorie),
+    celle-ci porte sur l'entreprise entière — `category` reste `None`. Le
+    partage recent/earlier reprend exactement celui de
+    `_detect_category_trends` (période sélectionnée vs période précédente
+    contiguë de même durée, ou partage par moitié de l'historique faute de
+    période) pour rester cohérente avec le reste du détecteur."""
+    dated = [t for t in transactions if t.date is not None]
+    if not dated:
+        return []
+
+    has_period = period_start is not None and period_end is not None
+    if has_period:
+        span = period_end - period_start
+        previous_end = period_start - timedelta(days=1)
+        previous_start = previous_end - span
+        recent = [t for t in dated if period_start <= t.date <= period_end]
+        earlier = [t for t in dated if previous_start <= t.date <= previous_end]
+        comparison_txt = "la période précédente"
+    else:
+        sorted_dates = sorted(t.date for t in dated)
+        median_date = sorted_dates[len(sorted_dates) // 2]
+        recent = [t for t in dated if t.date >= median_date]
+        earlier = [t for t in dated if t.date < median_date]
+        comparison_txt = (
+            "la moitié la plus ancienne de l'historique chargé, faute de "
+            "période sélectionnée"
+        )
+
+    current_margin = _net_margin_pct(recent)
+    previous_margin = _net_margin_pct(earlier)
+    if current_margin is None or previous_margin is None:
+        return []
+    if current_margin >= target_margin_pct:
+        return []
+
+    change = current_margin - previous_margin
+    if change > -MARGIN_DECLINE_THRESHOLD_POINTS:
+        return []
+
+    recent_revenue = sum(float(t.amount) for t in recent if t.amount and t.amount > 0)
+    # Manque à gagner vs la marge de la période de comparaison, sur le CA
+    # réellement réalisé cette période — pas un montant brut, l'écart
+    # imputable au recul de marge (même logique que les deux autres règles).
+    impact = round(recent_revenue * change / 100, 2)
+    gap_to_target = target_margin_pct - current_margin
+
+    return [
+        Anomaly(
+            type="margin_decline",
+            severity=_margin_severity(gap_to_target, change),
+            message=(
+                f"La marge nette est de {current_margin:.1f} % (objectif : "
+                f"{target_margin_pct:.1f} %), en baisse de {abs(change):.1f} points "
+                f"par rapport à {comparison_txt} ({previous_margin:.1f} %)."
+            ),
+            detected_at=period_end if has_period else max(t.date for t in dated),
+            why=(
+                "Règle déterministe (spec §12/§18) : marge nette sous l'objectif "
+                f"et en baisse d'au moins {MARGIN_DECLINE_THRESHOLD_POINTS:.0f} "
+                f"points par rapport à {comparison_txt}."
+            ),
+            impact_amount=impact,
+            action=(
+                "Vérifier les postes de revenus et de dépenses qui ont fait "
+                "bouger la marge sur cette période."
+            ),
+            metadata={
+                "current_margin_pct": round(current_margin, 1),
+                "previous_margin_pct": round(previous_margin, 1),
+                "target_margin_pct": round(target_margin_pct, 1),
+                "change_pct_points": round(change, 1),
+            },
+        )
+    ]
+
+
 def detect_anomalies(
     transactions: list[Transaction],
     *,
     period_start: date | None = None,
     period_end: date | None = None,
+    target_margin_pct: float = DEFAULT_TARGET_MARGIN_PCT,
 ) -> list[Anomaly]:
-    """Si ``period_start``/``period_end`` sont fournis, les deux détecteurs
+    """Si ``period_start``/``period_end`` sont fournis, les détecteurs
     comparent la période sélectionnée à la période précédente immédiatement
     contiguë de même durée (même formule que
     `dashboard.py::get_company_kpis_variance`) au lieu de leurs fenêtres par
     défaut (30 jours ancrés sur la donnée / partage médian de l'historique).
-    Sans période (``None``/``None``), comportement historique inchangé."""
-    anomalies = _detect_category_outlier_clusters(
-        transactions, period_start=period_start, period_end=period_end
-    ) + _detect_category_trends(transactions, period_start=period_start, period_end=period_end)
+    Sans période (``None``/``None``), comportement historique inchangé.
+
+    ``target_margin_pct`` vient de `Company.target_margin_pct` — c'est
+    l'appelant (qui a la session DB) qui le résout et le transmet ici."""
+    anomalies = (
+        _detect_category_outlier_clusters(
+            transactions, period_start=period_start, period_end=period_end
+        )
+        + _detect_category_trends(
+            transactions, period_start=period_start, period_end=period_end
+        )
+        + _detect_margin_decline(
+            transactions,
+            period_start=period_start,
+            period_end=period_end,
+            target_margin_pct=target_margin_pct,
+        )
+    )
     severity_rank = {"high": 0, "medium": 1, "low": 2}
     anomalies.sort(key=lambda a: severity_rank[a.severity])
     return anomalies[:MAX_ANOMALIES]

@@ -43,7 +43,7 @@ def get_company_anomalies(
     reste n'est pas tronqué : il n'est pas calculé. `X-Total-Count` est tout
     de même publié, pour la cohérence avec les autres listes.
     """
-    _get_company_or_404(company_id, db)
+    company = _get_company_or_404(company_id, db)
 
     # Toujours l'historique complet validé : le détecteur a besoin de
     # données antérieures à `start_date` pour sa baseline statistique, c'est
@@ -55,7 +55,12 @@ def get_company_anomalies(
         .all()
     )
 
-    anomalies = detect_anomalies(transactions, period_start=start_date, period_end=end_date)
+    anomalies = detect_anomalies(
+        transactions,
+        period_start=start_date,
+        period_end=end_date,
+        target_margin_pct=float(company.target_margin_pct),
+    )
     # len(anomalies) <= MAX_ANOMALIES par construction (cf. docstring).
     response.headers["X-Total-Count"] = str(len(anomalies))
     return [

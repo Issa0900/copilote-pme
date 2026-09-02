@@ -19,9 +19,9 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from app.anomalies import detect_anomalies
+from app.anomalies import DEFAULT_TARGET_MARGIN_PCT, detect_anomalies
 from app.kpis import compute_company_kpis
-from app.models import Import, Recommendation, Transaction
+from app.models import Company, Import, Recommendation, Transaction
 
 PRIORITY_RANK = {"urgente": 0, "élevée": 1, "moyenne": 2, "faible": 3}
 TOP_RISKS_COUNT = 5
@@ -126,7 +126,13 @@ def _generate_report_content(
         .filter(Transaction.company_id == company_id, Transaction.status == "validated")
         .all()
     )
-    anomalies = detect_anomalies(transactions)
+    company = db.get(Company, company_id)
+    target_margin_pct = (
+        float(company.target_margin_pct)
+        if company is not None and company.target_margin_pct
+        else DEFAULT_TARGET_MARGIN_PCT
+    )
+    anomalies = detect_anomalies(transactions, target_margin_pct=target_margin_pct)
 
     recs = (
         db.query(Recommendation)

@@ -43,6 +43,7 @@ def alerts_from_anomalies(anomalies: list[Anomaly]) -> list[Alert]:
     titles = {
         "transaction_outlier": "Transaction inhabituelle",
         "category_trend": "Tendance inhabituelle",
+        "margin_decline": "Marge en baisse",
     }
     return [
         Alert(

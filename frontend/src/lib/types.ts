@@ -172,7 +172,7 @@ export type HealthDimension = {
   explanation: string;
 };
 
-export type HealthStatus = "sain" | "stable" | "vigilance" | "risque" | "critique";
+export type HealthStatus = "excellent" | "sain" | "stable" | "vigilance" | "risque" | "critique";
 
 export type HealthScore = {
   score: number;

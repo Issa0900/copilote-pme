@@ -9,6 +9,7 @@ import { Badge, Card, SectionHeading, TrustBadge, type Tone } from "@/components
 import type { HealthScore, HealthStatus } from "@/lib/types";
 
 const STATUS_TONE: Record<HealthStatus, Tone> = {
+  excellent: "success",
   sain: "success",
   stable: "info",
   vigilance: "surveillance",
@@ -17,6 +18,7 @@ const STATUS_TONE: Record<HealthStatus, Tone> = {
 };
 
 const STATUS_LABELS: Record<HealthStatus, string> = {
+  excellent: "Excellente",
   sain: "Saine",
   stable: "Stable",
   vigilance: "Vigilance",

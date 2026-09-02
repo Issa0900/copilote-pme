@@ -264,3 +264,102 @@ def test_anomalies_sorted_by_severity():
     anomalies = detect_anomalies(normal + [mild_outlier])
     severities = [a.severity for a in anomalies]
     assert severities == sorted(severities, key={"high": 0, "medium": 1, "low": 2}.get)
+
+
+# --- Règle "Marge" (spec §12/§18/§64.12) ------------------------------------
+#
+# `_txn` sans période sélectionnée : le partage recent/earlier se fait par
+# médiane de date. Avec 4 transactions (revenu+dépense en janvier,
+# revenu+dépense en juin), la médiane tombe sur la première date de juin :
+# earlier = les deux transactions de janvier, recent = les deux de juin.
+
+
+def _margin_txns(earlier_revenue, earlier_expense, recent_revenue, recent_expense):
+    return [
+        _txn(earlier_revenue, category="Ventes", d=date(2024, 1, 1)),
+        _txn(-earlier_expense, category="Fournitures", d=date(2024, 1, 2)),
+        _txn(recent_revenue, category="Ventes", d=date(2024, 6, 1)),
+        _txn(-recent_expense, category="Fournitures", d=date(2024, 6, 2)),
+    ]
+
+
+def test_margin_decline_triggered_below_target_and_dropping():
+    # earlier : marge 30 % (1000-700)/1000. recent : marge 15 % (1000-850)/1000.
+    txns = _margin_txns(1000, 700, 1000, 850)
+    anomalies = [a for a in detect_anomalies(txns, target_margin_pct=20) if a.type == "margin_decline"]
+    assert len(anomalies) == 1
+    a = anomalies[0]
+    assert a.category is None
+    assert a.metadata["current_margin_pct"] == 15.0
+    assert a.metadata["previous_margin_pct"] == 30.0
+    assert a.metadata["change_pct_points"] == -15.0
+    assert a.severity == "high"  # baisse de 15 points >= 8
+    assert a.impact_amount is not None
+
+
+def test_margin_decline_not_triggered_when_current_margin_meets_target():
+    # recent : marge 25 % >= objectif 20 %, même si elle a beaucoup baissé
+    # (40 % -> 25 %) : la règle exige les DEUX conditions (spec §12 : "ET").
+    txns = _margin_txns(1000, 600, 1000, 750)
+    anomalies = [a for a in detect_anomalies(txns, target_margin_pct=20) if a.type == "margin_decline"]
+    assert anomalies == []
+
+
+def test_margin_decline_not_triggered_when_drop_below_threshold():
+    # recent : marge 15 % < objectif 20 %, mais la baisse (17 % -> 15 %, soit
+    # 2 points) est sous le seuil de MARGIN_DECLINE_THRESHOLD_POINTS (3).
+    txns = _margin_txns(1000, 830, 1000, 850)
+    anomalies = [a for a in detect_anomalies(txns, target_margin_pct=20) if a.type == "margin_decline"]
+    assert anomalies == []
+
+
+def test_margin_decline_ignored_without_revenue_in_either_period():
+    # Aucun revenu sur la période récente : marge non calculable (None),
+    # jamais 0 % — la règle doit s'abstenir proprement, pas lever d'exception.
+    txns = [
+        _txn(1000, category="Ventes", d=date(2024, 1, 1)),
+        _txn(-700, category="Fournitures", d=date(2024, 1, 2)),
+        _txn(-50, category="Fournitures", d=date(2024, 6, 1)),
+        _txn(-60, category="Fournitures", d=date(2024, 6, 2)),
+    ]
+    anomalies = [a for a in detect_anomalies(txns, target_margin_pct=20) if a.type == "margin_decline"]
+    assert anomalies == []
+
+
+def test_margin_decline_uses_selected_period_not_median_split():
+    # Même principe que category_trend : avec une période sélectionnée, la
+    # comparaison se fait contre la période précédente contiguë de même
+    # durée, pas contre un partage médian de tout l'historique.
+    noise_old = [
+        _txn(1000, category="Ventes", d=date(2024, 1, 1)),
+        _txn(-500, category="Fournitures", d=date(2024, 1, 2)),  # marge 50 %, hors champ
+    ]
+    # span = 1 jour (6/1 -> 6/2) => période précédente = 5/30 -> 5/31.
+    earlier = [
+        _txn(1000, category="Ventes", d=date(2024, 5, 30)),
+        _txn(-700, category="Fournitures", d=date(2024, 5, 31)),  # marge 30 %
+    ]
+    recent = [
+        _txn(1000, category="Ventes", d=date(2024, 6, 1)),
+        _txn(-850, category="Fournitures", d=date(2024, 6, 2)),  # marge 15 %
+    ]
+    anomalies = [
+        a
+        for a in detect_anomalies(
+            noise_old + earlier + recent,
+            period_start=date(2024, 6, 1),
+            period_end=date(2024, 6, 2),
+            target_margin_pct=20,
+        )
+        if a.type == "margin_decline"
+    ]
+    assert len(anomalies) == 1
+    assert anomalies[0].metadata["previous_margin_pct"] == 30.0
+    assert "la période précédente" in anomalies[0].message
+
+
+def test_margin_decline_defaults_target_when_not_provided():
+    # Sans target_margin_pct explicite, DEFAULT_TARGET_MARGIN_PCT (20) s'applique.
+    txns = _margin_txns(1000, 700, 1000, 850)  # recent margin 15 % < 20 %
+    anomalies = [a for a in detect_anomalies(txns) if a.type == "margin_decline"]
+    assert len(anomalies) == 1

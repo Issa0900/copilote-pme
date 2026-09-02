@@ -113,12 +113,15 @@ SQLAlchemy 2.0 models in `backend/app/models.py`, migrations in `backend/alembic
 
 ## Where the work stands (updated 2026-09-02)
 
-Backend suite: **145 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work.
+Backend suite: **192 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work.
+
+Lots 1 and 2 below are committed and pushed on `fix/audit-mvp-lot-1` (PR #4, not yet merged). Lot 3 is
+uncommitted at time of writing.
 
 ### Known defects, found by auditing the calculation logic against real demo data
 
 The four findings below were the first lot of targeted fixes (2026-09-02). Three are closed; the fourth is
-mitigated but structurally open. Uncommitted at time of writing.
+mitigated but structurally open.
 
 1. ~~**The category donut adds revenue to expenses.**~~ **Fixed.** `compute_category_breakdown` now filters
    `amount < 0` and returns expenses only, in absolute value — matching the `<title>` the component already
@@ -167,6 +170,72 @@ index still serves the `company_id, status` prefix but can no longer bound the d
 of counting undated quarantine rows within the single-query rule; the alternative was a second dedicated
 query. Harmless at MVP scale (a few thousand rows per tenant) — but this is the first place to revisit if a
 tenant reaches hundreds of thousands of transactions.
+
+### Lot 2: audit logging, pagination, company currency (spec §64)
+
+Closed several MVP-blocking or explicitly-named gaps in spec §64 that lot 1 didn't touch:
+
+- **Audit logging** (`app/audit.py`, spec §64.25, blocking criterion): auth, import create/delete, company
+  update, and recommendation status changes are logged (logfmt, ASCII-only) — no secrets, no transaction
+  content.
+- **Pagination** (spec §64.24): imports, import transactions, reports, alerts, recommendations are paginated
+  with `X-Total-Count` (`lib/pagination.ts`, `components/list-pagination.tsx`); every list screen now
+  distinguishes a failed fetch from a genuinely empty list.
+- **Company currency** (spec §64.3/§64.6/§64.8/§64.9): `Company.currency` (ISO 4217, migration
+  `3a95a53031ff`), validated against a closed list (`CURRENCY_CHOICES` in `app/constants.py` — CAD/USD/EUR;
+  multi-currency *conversion* stays out of MVP scope per `docs/project-charter.md`), exposed via
+  `/meta/company-options`, settable at creation and in Paramètres, and threaded through every screen that
+  formats a money amount (`formatCurrency(value, currency)` in `lib/format.ts` now takes the company's
+  currency — it no longer defaults silently to CAD anywhere reachable from a page).
+- `CompanyKpis.net_margin_pct` added as the single source of truth for net margin — `health.py` and the
+  dashboard no longer recompute `net_result / revenue_total` themselves (division-by-zero-prone duplicated
+  logic, now gone).
+- Import transparency (spec §64.5/§64.19): `unrecognized_columns` and `duplicates_skipped` are returned on
+  `POST /imports` instead of being discarded silently (not persisted — see `ImportCreateRead` docstring for
+  why).
+
+### Lot 3: missing "Marge" anomaly rule, frontend health-status gap
+
+Found by reading the spec beyond §64 (sections 1–63 describe the fuller product vision; most of it is
+aspirational/Phase 2-3, but a few sections state literal, checkable business rules worth diffing against the
+code) rather than just checking the §64 acceptance boxes.
+
+1. **§7/§12/§18/§64.12 — the "Marge" deterministic rule didn't exist.** §64.12 requires a minimum of 3
+   deterministic anomaly rules (Marge, Dépenses, Ventes); only 2 rule *types* existed
+   (`transaction_outlier`, `category_trend`), and neither is margin-aware — `grep -n "margin\|marge"
+   app/anomalies.py app/alerts.py` returned nothing before this lot. Added `_detect_margin_decline` in
+   `app/anomalies.py`, implementing §18's literal example (`if margin < target_margin and margin_change <=
+   -3: create_alert(...)`) against the recent/earlier split `_detect_category_trends` already uses (period
+   vs. contiguous previous period, or a median-date split of loaded history when no period is selected).
+   `detect_anomalies()` gained a keyword-only `target_margin_pct` parameter (default
+   `DEFAULT_TARGET_MARGIN_PCT = 20.0`, duplicated from `health.DEFAULT_TARGET_MARGIN` rather than imported —
+   `health.py` already imports `detect_anomalies`, so the reverse import would cycle); every one of the 5
+   call sites (`health.py`, `routers/anomalies.py`, `routers/alerts.py`, `recommendations.py`, `reports.py`)
+   now resolves `company.target_margin_pct` and passes it through. `alerts.py`'s anomaly-type-to-title dict
+   and `recommendations.py`'s `ANALYSIS_TEXT`/`_impact_and_action` (both keyed by `anomaly.type` with **no
+   fallback** — a new type reaching them unhandled would either mislabel as a category alert or `KeyError`)
+   were updated for `"margin_decline"` too. Verified against the demo tenant: fires correctly over the
+   default 30-day dashboard window (margin 10.8% vs. an 18% target, down from 41.1%) and correctly abstains
+   over windows where the margin clears the target (18.4% vs. 18%) or where a wider window dilutes the
+   drift below the 3-point threshold — the "AND", not just "OR", condition in the spec's rule is load-bearing
+   and is unit-tested (`tests/test_anomalies.py`).
+   Still inherits lot 2's known "no-period mode" gap: `recommendations.py`, `reports.py`, `routers/alerts.py`
+   call `detect_anomalies` without a period, so this rule (like the other two) uses the coarse median-history
+   split there, not a real previous-period comparison — same deliberately-deferred limitation as lot 2 item 2.
+2. **Frontend `HealthStatus` type was missing `"excellent"`.** Backend `health.py` returns 6 statuses
+   (`_STATUS_ORDER`, matching spec §7's 90/75/60/40/20 thresholds exactly); `frontend/src/lib/types.ts` only
+   declared 5. `health-panel.tsx`'s `STATUS_TONE`/`STATUS_LABELS` `Record<HealthStatus, Tone/string>` lookups
+   therefore returned `undefined` for the best-scoring companies (score ≥ ~91 with the default 80 healthy
+   threshold) — the situation badge rendered as an empty pill with the fallback "neutral" tone instead of
+   "Excellente" / success-green. Fixed by adding `"excellent"` to the type and both `Record`s.
+
+**Operational note hit while verifying lot 3 in-browser**: killing a `uvicorn --reload` parent process by PID
+left an orphaned worker (spawned via `multiprocessing`) still bound to port 8000 and serving pre-edit code —
+exactly the failure mode this file already warned about. `netstat`/`tasklist` under Git Bash reported a PID
+that no longer existed; `Get-CimInstance Win32_Process -Filter "Name like '%python%'"` in PowerShell was what
+actually found the live orphan (its `CommandLine` names the `parent_pid`). Worth reaching for that command
+directly next time instead of re-diagnosing from Bash-side `netstat`/`tasklist` output, which was misleading
+here.
 
 ### Deliberate deviations from the older docs
 
