@@ -1,0 +1,6 @@
+{
+  "name": "Gescop — Pilotage PME Québec",
+  "description": "Système intelligent de pilotage et de gouvernance pour PME québécoises : indicateurs, diagnostics d'écarts, recommandations et mémoire décisionnelle.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
