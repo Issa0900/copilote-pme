@@ -8,6 +8,7 @@ import {
   ActionIcon,
   AlertIcon,
   CloseIcon,
+  CockpitIcon,
   HomeIcon,
   ImportIcon,
   MenuIcon,
@@ -28,7 +29,10 @@ import type { Company } from "@/lib/types";
 const NAV_SECTIONS = [
   {
     title: null,
-    items: [{ href: "", label: "Tableau de bord", Icon: HomeIcon }],
+    items: [
+      { href: "", label: "Tableau de bord", Icon: HomeIcon },
+      { href: "/cockpit", label: "Cockpit décisionnel", Icon: CockpitIcon },
+    ],
   },
   {
     title: "Intelligence",

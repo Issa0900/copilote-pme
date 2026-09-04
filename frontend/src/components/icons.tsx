@@ -102,6 +102,18 @@ export function ActionIcon(props: IconProps) {
   );
 }
 
+export function CockpitIcon(props: IconProps) {
+  // Cadran : l'écran cockpit lit une situation d'un coup d'oeil, comme un
+  // tableau de bord de véhicule — arc gradué et aiguille.
+  return (
+    <svg {...base(props)}>
+      <path d="M4 16a8 8 0 0 1 16 0" />
+      <path d="M12 16l4-4" />
+      <path d="M4 16h2M18 16h2M12 8V6" />
+    </svg>
+  );
+}
+
 export function HomeIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

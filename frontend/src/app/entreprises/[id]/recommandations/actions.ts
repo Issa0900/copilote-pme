@@ -36,6 +36,11 @@ export async function setRecommendationStatusAction(
   }
 
   revalidatePath(`/entreprises/${companyId}/recommandations`);
+  // Le cockpit décisionnel affiche les mêmes recommandations en attente
+  // d'arbitrage et propose les mêmes boutons : sans cette revalidation, une
+  // recommandation arbitrée depuis le cockpit y resterait affichée comme
+  // « en attente ».
+  revalidatePath(`/entreprises/${companyId}/cockpit`);
 
   return {};
 }

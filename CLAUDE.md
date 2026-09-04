@@ -115,7 +115,7 @@ SQLAlchemy 2.0 models in `backend/app/models.py`, migrations in `backend/alembic
 
 Backend suite: **213 passed, 1 skipped**. Frontend typechecks clean; `npm run lint` has **pre-existing** failures in `company-nav.tsx`, `category-breakdown.tsx` and `recommandations/actions.ts` that predate this work (lot 5 added two more instances of the same already-accepted `_prevState`/`_formData` unused-arg warning pattern in `recommandations/actions.ts`, not a new category of issue).
 
-Lots 1-4 are merged into `main` (PR #4, PR #5). Lot 5 is uncommitted at time of writing.
+Lots 1-4 are merged into `main` (PR #4, PR #5). Lot 5 is uncommitted at time of writing. Lot 6 (audit du prototype AI Studio + cockpit décisionnel) est décrit plus bas.
 
 ### Known defects, found by auditing the calculation logic against real demo data
 
@@ -330,6 +330,49 @@ Frontend: new `/entreprises/{id}/actions` screen (`actions/` folder, same groupe
 `alertes/page.tsx`), a `Recommendations` page button "Créer une action" (redirects to the new screen rather
 than revalidating in place — the user should see where the action landed), and a nav entry with an open-actions
 count badge (`layout.tsx`/`company-nav.tsx`, same pattern as the alerts/recommendations badges already there).
+
+### Lot 6: audit du prototype AI Studio + cockpit décisionnel
+
+Issa a fourni une maquette React/Vite générée par Google AI Studio (« Gescop — Pilotage PME Québec »,
+2 entreprises fictives, aucune base de données). Elle est archivée telle quelle sous
+`prototypes/gescop-quebec-aistudio/` et auditée dans `docs/audit-prototype-gescop-quebec.md` (21 défauts,
+dont cinq bloquants de confiance : repli IA qui fabrique des montants précis pour n'importe quelle
+entreprise, score de santé qui monte au clic, résultat mesuré auto-déclaré, diagnostic codé en dur affiché
+pour toutes les entreprises, import de fichier mis en scène). **Le prototype n'est pas une base de code à
+reprendre** — il ne se construit pas, ne se teste pas et ne se déploie pas ; `prototypes/README.md` le dit.
+
+Décision produit prise avec Issa après l'audit : garder le *périmètre d'écran* du prototype, jeter son
+moteur, et le rebâtir sur les données réelles. D'où le nouvel écran **Cockpit décisionnel**
+(`/entreprises/{id}/cockpit`), qui rend la boucle Détecter → Comprendre → Décider → Agir → Mesurer
+(spec §64.27) visible d'un seul écran — ce que le produit éclatait jusqu'ici sur quatre pages :
+
+1. Signaux vitaux — `/kpis/comparison` + `/health-score`
+2. Ce qui change — `/anomalies`
+3. Pourquoi — `/kpis/variance` (les catégories qui *portent* l'écart, jamais une cause métier)
+4. Que décider — `/recommendations`, avec l'arbitrage en place (`RecommendationActions` réutilisé)
+5. Ce que ça a donné — `/actions`, mesure avant/après réelle
+
+**Aucun changement backend** : l'écran ne consomme que des routes existantes. Trois points de discipline
+qui doivent survivre à toute modification de ce fichier :
+
+- Le pied d'écran énumère ce que le cockpit **ne** montre **pas** (stocks, entonnoir marketing/CAC,
+  budget vs réel, TPS/TVQ) et pourquoi : aucune source de données ne les alimente. C'est la réponse
+  directe au défaut F4 de l'audit — un blanc inexpliqué se lit comme un bug, un bloc inventé se lit
+  comme un fait. Ne pas supprimer cette note en ajoutant une section ; la mettre à jour.
+- Chaque zone distingue « échec de chargement » de « rien à signaler » (`ZoneError`, spec §64.22).
+- La zone 5 compte les actions **en attente de mesure** (`result_pct === null`), pas les actions au statut
+  « en cours » : une action terminée peut ne pas être mesurée, et une action en cours peut l'être déjà.
+
+`MeasurementBlock` a été extrait de `actions/page.tsx` vers `components/action-measurement.tsx`
+(`ActionMeasurement`) pour que les deux écrans lisent un résultat mesuré de la même façon — sans quoi la
+même action raconterait deux histoires selon la page. `setRecommendationStatusAction` revalide désormais
+aussi `/cockpit`.
+
+Vérifié en exécution sur le tenant de démonstration (Postgres local, `seed_demo`, backend + frontend
+lancés, navigation Playwright) : les cinq zones s'affichent, l'arbitrage depuis le cockpit crée bien
+l'action et redirige vers le Centre d'actions, et après recul de la fenêtre de suivi la zone 5 affiche
+une mesure réelle (Fournitures : -8 640 $ → -5 937 $, +31,3 %). Suite backend : 213 passed, 1 skipped.
+`npm run build` propre ; `npm run lint` garde exactement les mêmes échecs pré-existants qu'avant ce lot.
 
 ### Deliberate deviations from the older docs
 
